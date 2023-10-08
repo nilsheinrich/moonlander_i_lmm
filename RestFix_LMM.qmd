@@ -1,0 +1,647 @@
+---
+title: "Nils Wendel Heinrich: Resting Fixations"
+subtitle: "Moonlander I - Analysis"
+author: "Nils Wendel Heinrich"
+date: "2023-09-25"
+format:
+  html:
+    embed-resources: true
+    toc: true
+    toc-depth: 2
+    code-fold: false
+    number-sections: true
+    fig-width: 8
+    fig-height: 6
+editor_options:
+  chunk_output_type: console
+jupyter: julia-1.9
+---
+
+# Description
+2 Covariates (continuous variables we believe affect the predicted variable) - N_visible_obstacles & N_visible_drift_tiles
+1 Fixed Effect (categorical variable) - input noise
+
+# Setup
+
+## Packages
+
+```{julia}
+#| label: packages
+
+using Arrow
+using AlgebraOfGraphics
+using CairoMakie
+using DataFrames
+using DataFrameMacros
+using MixedModels
+using MixedModelsMakie
+using Random
+#using RCall
+
+CairoMakie.activate!(; type="svg");
+```
+
+```{julia}
+#| label: constants
+const RNG = MersenneTwister(36)
+N_iterations = 10000
+```
+
+```{julia}
+const AoG = AlgebraOfGraphics;
+```
+
+# Modeling fixation duration
+
+## Code book
+Two possible random effects: **ID** (the subject itself) and **total_control_loss** (whether subject reported having lost all control in specific situations).
+
+```{julia}
+#| label: data
+
+my_data = DataFrame(Arrow.Table("data/Experiment1_RestingFixations.arrow"))
+my_data = dropmissing(my_data, [:N_visible_obstacles, :N_visible_drift_tiles])
+
+# Filtering saccades with no amplitude
+my_data = my_data[(my_data.fixation_duration .> 0), :]
+
+describe(my_data)
+```
+
+### Contrasts
+
+We will declare **ID** and **total_control_loss** as a grouping variable as well as define the effects coding for the discrete covariate input noise.
+
+#### Hypothesis Coding
+```{julia}
+my_cake = Dict(
+  :ID => Grouping(),
+  :total_control_loss => Grouping(),
+  :input_noise => EffectsCoding(; levels=["N", "W", "S"]),
+  :Test => HypothesisCoding(
+    [
+      -1 +1 0
+      -1 0 +1
+    ];
+    levels=["N", "W", "S"],
+    labels=["No_inputNoise", "Weak_inputNoise", "Strong_inputNoise"],
+  ),
+);
+```
+
+# Modeling fixation duration
+
+## Building various models
+
+### Only varying intercept LMM
+
+Varying intercepts for **ID** and **total_control_loss**:
+```{julia}
+#| label: m_varyingInt1
+
+m_varyingInt1 = let
+    varInt = @formula(log(fixation_duration) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + (1 | ID) + (1 | total_control_loss));
+    fit(MixedModel, varInt, my_data; contrasts=my_cake);
+  end
+
+issingular(m_varyingInt1) # singular
+
+```
+we detect overparamterization. I suspect total_control_loss to hold no variance. Let's check it out
+
+```{julia}
+
+#first: ID
+VarCorr(m_varyingInt1)
+last(m_varyingInt1.λ)  # for total_control_loss: 0.0
+
+```
+Yep. We will neglect **total_control_loss** from here on.
+
+```{julia}
+#| label: m_varyingInt2
+
+m_varyingInt2 = let
+    varInt = @formula(log(fixation_duration) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + (1 | ID));
+    fit(MixedModel, varInt, my_data; contrasts=my_cake);
+  end
+
+issingular(m_varyingInt2)
+VarCorr(m_varyingInt2)
+```
+
+### Exploring random effects structure of the model
+ We start by building the most complex random effects structure around **ID** (just dumping all of the fixed effects in the varying slope). Including the interaction effect
+
+```{julia}
+#| label: m_varyingSlope_complex
+
+m_varyingSlope_complex = let
+    varSlop = @formula(log(fixation_duration) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + (1 + N_visible_obstacles * N_visible_drift_tiles + input_noise | ID));
+    fit(MixedModel, varSlop, my_data; contrasts=my_cake);
+  end
+
+issingular(m_varyingSlope_complex)  # overparameterized
+```
+We detect singularity. Better throw out the interaction within the random effects structure.
+
+```{julia}
+#| label: m_varyingSlope_complex
+
+m_varyingSlope_complex = let
+    varSlop = @formula(log(fixation_duration) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + (1 + N_visible_obstacles + N_visible_drift_tiles + input_noise | ID));
+    fit(MixedModel, varSlop, my_data; contrasts=my_cake);
+  end
+
+issingular(m_varyingSlope_complex)  # NOT overparameterized
+VarCorr(m_varyingSlope_complex)  # 
+last(m_varyingSlope_complex.λ)  # we only have one random effect: ID, but last() puts it into a nice matrix
+# no zeroes on the diagonal
+```
+
+#### Models of less complexity
+
+Stating zerocorr
+```{julia}
+#| label: m_varyingSlope_complex_zc
+
+m_varyingSlope_complex_zc = let
+    varSlop = @formula(log(fixation_duration) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + zerocorr(1 + N_visible_obstacles + N_visible_drift_tiles + input_noise | ID));
+    fit(MixedModel, varSlop, my_data; contrasts=my_cake);
+  end
+
+issingular(m_varyingSlope_complex_zc)  # NOT overparameterized
+VarCorr(m_varyingSlope_complex_zc)  # 
+last(m_varyingSlope_complex_zc.λ)  # we only have one random effect: ID, but last() puts it into a nice matrix
+# no zeroes on the diagonal
+```
+
+```{julia}
+
+gof_summary = let
+  nms = [:m_varyingSlope_complex_zc, :m_varyingSlope_complex]
+  mods = eval.(nms)
+  lrt = MixedModels.likelihoodratiotest(m_varyingSlope_complex_zc, m_varyingSlope_complex)
+  DataFrame(;
+    name = nms, 
+    dof=dof.(mods),
+    deviance=round.(deviance.(mods), digits=0),
+    AIC=round.(aic.(mods),digits=0),
+    AICc=round.(aicc.(mods),digits=0),
+    BIC=round.(bic.(mods),digits=0),
+    χ²=vcat(:., round.(lrt.tests.deviancediff, digits=0)),
+    χ²_dof=vcat(:., round.(lrt.tests.dofdiff, digits=0)),
+    pvalue=vcat(:., round.(lrt.tests.pvalues, digits=3))
+  )
+end
+
+```
+Not allowing correlation between random effects is favored by BIC (and AIC). Proceed with m_varyingSlope_complex_zc and starting to delete indivudal random effects.
+
+Throwing input noise out of the random effects structure of the model.
+```{julia}
+#| label: m_varyingSlope1
+
+m_varyingSlope1 = let
+    varSlop = @formula(log(fixation_duration) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + zerocorr(1 + N_visible_obstacles + N_visible_drift_tiles | ID));
+    fit(MixedModel, varSlop, my_data; contrasts=my_cake);
+  end
+
+issingular(m_varyingSlope1)  # NOT overparameterized
+VarCorr(m_varyingSlope1)
+
+```
+
+```{julia}
+
+gof_summary = let
+  nms = [:m_varyingSlope1, :m_varyingSlope_complex_zc]
+  mods = eval.(nms)
+  lrt = MixedModels.likelihoodratiotest(m_varyingSlope1, m_varyingSlope_complex_zc)
+  DataFrame(;
+    name = nms, 
+    dof=dof.(mods),
+    deviance=round.(deviance.(mods), digits=0),
+    AIC=round.(aic.(mods),digits=0),
+    AICc=round.(aicc.(mods),digits=0),
+    BIC=round.(bic.(mods),digits=0),
+    χ²=vcat(:., round.(lrt.tests.deviancediff, digits=0)),
+    χ²_dof=vcat(:., round.(lrt.tests.dofdiff, digits=0)),
+    pvalue=vcat(:., round.(lrt.tests.pvalues, digits=3))
+  )
+end
+
+```
+_complex_zc is favored by BIC. Will proceed with that one.
+
+```{julia}
+#| label: m_varyingSlope2
+
+m_varyingSlope2 = let
+    varSlop = @formula(log(fixation_duration) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + zerocorr(1 + N_visible_obstacles + input_noise | ID));
+    fit(MixedModel, varSlop, my_data; contrasts=my_cake);
+  end
+
+issingular(m_varyingSlope2)  # NOT overparameterized
+VarCorr(m_varyingSlope2)
+
+```
+
+```{julia}
+
+gof_summary = let
+  nms = [:m_varyingSlope2, :m_varyingSlope_complex_zc]
+  mods = eval.(nms)
+  lrt = MixedModels.likelihoodratiotest(m_varyingSlope2, m_varyingSlope_complex_zc)
+  DataFrame(;
+    name = nms, 
+    dof=dof.(mods),
+    deviance=round.(deviance.(mods), digits=0),
+    AIC=round.(aic.(mods),digits=0),
+    AICc=round.(aicc.(mods),digits=0),
+    BIC=round.(bic.(mods),digits=0),
+    χ²=vcat(:., round.(lrt.tests.deviancediff, digits=0)),
+    χ²_dof=vcat(:., round.(lrt.tests.dofdiff, digits=0)),
+    pvalue=vcat(:., round.(lrt.tests.pvalues, digits=3))
+  )
+end
+
+```
+_complex_zc is again favored by BIC.
+
+Throwing out N_visible_obstacles.
+```{julia}
+#| label: m_varyingSlope3
+
+m_varyingSlope3 = let
+    varSlop = @formula(log(fixation_duration) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + zerocorr(1 + N_visible_drift_tiles + input_noise | ID));
+    fit(MixedModel, varSlop, my_data; contrasts=my_cake);
+  end
+
+issingular(m_varyingSlope3)  # NOT overparameterized
+VarCorr(m_varyingSlope3)
+
+```
+
+```{julia}
+
+gof_summary = let
+  nms = [:m_varyingSlope3, :m_varyingSlope_complex_zc]
+  mods = eval.(nms)
+  lrt = MixedModels.likelihoodratiotest(m_varyingSlope3, m_varyingSlope_complex_zc)
+  DataFrame(;
+    name = nms, 
+    dof=dof.(mods),
+    deviance=round.(deviance.(mods), digits=0),
+    AIC=round.(aic.(mods),digits=0),
+    AICc=round.(aicc.(mods),digits=0),
+    BIC=round.(bic.(mods),digits=0),
+    χ²=vcat(:., round.(lrt.tests.deviancediff, digits=0)),
+    χ²_dof=vcat(:., round.(lrt.tests.dofdiff, digits=0)),
+    pvalue=vcat(:., round.(lrt.tests.pvalues, digits=3))
+  )
+end
+
+```
+Referring to BIC, _complex_zc is ahead.
+
+### Model selection
+m_varyingSlope_complex_zc
+```{julia}
+
+VarCorr(m_varyingSlope_complex_zc)
+last(m_varyingSlope_complex_zc.λ)
+
+```
+
+## Principal component analysis
+
+```{julia}
+
+MixedModels.PCA(m_varyingSlope_complex_zc)
+
+```
+
+## Caterpillar plot
+
+```{julia}
+#| fig-cap1: Prediction intervals on subject random effects for model m_varyingSlope_complex
+#| label: fig-cm_varyingSlope
+#|
+cm_varyingSlope = first(ranefinfo(m_varyingSlope_complex_zc));
+caterpillar!(Figure(; resolution=(800, 1200)), cm_varyingSlope; orderby=1)
+```
+
+## Shrinkage plot
+
+```{julia}
+#| code-fold: true
+#| label: fig-shrinkage
+#|
+#| fig-cap: Shrinkage plots of the subject random effects in the chosen model
+shrinkageplot!(Figure(; resolution=(1000, 1200)), m_varyingSlope_complex_zc)
+
+```
+We see a few data points which are aggressively adjusted, especially for input noise W and S. Here is where strength was borrowed from somewhere else and applied.
+
+## Bootstrapping
+
+```{julia}
+samples = parametricbootstrap(RNG, N_iterations, m_varyingSlope_complex_zc)
+tbl = samples.tbl
+```
+
+### Plotting
+```{julia}
+plt = data(tbl) * mapping(:σ) * AoG.density()
+draw(plt; axis=(;title="Parametric bootstrap estimates of σ"))
+```
+
+Taking a look at the distributions of the estimates for the main effects:
+
+leaving out intercept...
+```{julia}
+plt = data(tbl) * mapping(
+  [:β2, :β3, :β4, :β5, :β6] .=> "Bootstrap replicates of main effect estimates";
+  color=dims(1) => renamer([ "N_obstacles", "N_drift", "input_noiseW", "input_noiseS", "N_obstacles * N_drift"])
+  ) * AoG.density()
+draw(plt; figure=(;supertitle="Parametric bootstrap β estimates of variance components"))
+```
+
+Let's first take a look into the bounds
+```{julia}
+confint(samples)
+```
+
+Now let's plot the bounds (without intercept) to visualize when 0 is within the bounds (meaning no significance). It's basically the plot above for the beta estimates but every estimate gets its own row, which makes it easier to read.
+```{julia}
+ridgeplot(samples; show_intercept=false, xlabel="Bootstrap density and 95%CI")
+```
+We see significance only for the interaction effect of N_visible_obstacles abd N_visible_drift_tiles. Input noise or the the individual continuous covariates don't seem to significanty affect the fixation duration in resting fixations.
+
+Zooming in on the interaction effect.
+```{julia}
+plt = data(tbl) * mapping(
+  [:β6] .=> "Bootstrap replicates of main effect estimates";
+  color=dims(1) => renamer([ "N_visible_obstacles*N_visible_drift_tiles"])
+  ) * AoG.density()
+draw(plt; figure=(;supertitle="Parametric bootstrap β estimates of variance components"))
+```
+
+# Modeling fixation location
+
+Leaving **total_control_loss** out from the start:
+```{julia}
+#| label: m_varyingInt1
+
+m_varyingInt1 = let
+    varInt = @formula(distance_to_spaceship ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + (1 | ID));
+    fit(MixedModel, varInt, my_data; contrasts=my_cake);
+  end
+
+issingular(m_varyingInt1) # NOT overparameterized
+
+```
+
+## Building various models with varying slope
+
+starting with the most complex model.
+```{julia}
+#| label: m_varyingSlope_complex
+
+m_varyingSlope_complex = let
+    varSlope = @formula(distance_to_spaceship ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + (1 + N_visible_obstacles * N_visible_drift_tiles + input_noise | ID));
+    fit(MixedModel, varSlope, my_data; contrasts=my_cake);
+  end
+
+issingular(m_varyingSlope_complex) # NOT overparameterized
+VarCorr(m_varyingSlope_complex)
+```
+
+### Models of reduced complexity
+```{julia}
+#| label: m_varyingSlope_complex_ni
+
+m_varyingSlope_complex_ni = let
+    varSlope = @formula(distance_to_spaceship ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + (1 + N_visible_obstacles + N_visible_drift_tiles + input_noise | ID));
+    fit(MixedModel, varSlope, my_data; contrasts=my_cake);
+  end
+
+issingular(m_varyingSlope_complex_ni) # NOT overparameterized
+VarCorr(m_varyingSlope_complex_ni)
+```
+
+Throwing interaction and no interaction against each other:
+```{julia}
+
+gof_summary = let
+  nms = [:m_varyingSlope_complex_ni, :m_varyingSlope_complex]
+  mods = eval.(nms)
+  lrt = MixedModels.likelihoodratiotest(m_varyingSlope_complex_ni, m_varyingSlope_complex)
+  DataFrame(;
+    name = nms, 
+    dof=dof.(mods),
+    deviance=round.(deviance.(mods), digits=0),
+    AIC=round.(aic.(mods),digits=0),
+    AICc=round.(aicc.(mods),digits=0),
+    BIC=round.(bic.(mods),digits=0),
+    χ²=vcat(:., round.(lrt.tests.deviancediff, digits=0)),
+    χ²_dof=vcat(:., round.(lrt.tests.dofdiff, digits=0)),
+    pvalue=vcat(:., round.(lrt.tests.pvalues, digits=3))
+  )
+end
+
+```
+_complex is favored by BIC.
+
+Neglecting all correlations between random effects.
+```{julia}
+#| label: m_varyingSlope_complex_zc
+
+m_varyingSlope_complex_zc = let
+    varSlope = @formula(distance_to_spaceship ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + zerocorr(1 + N_visible_obstacles * N_visible_drift_tiles + input_noise | ID));
+    fit(MixedModel, varSlope, my_data; contrasts=my_cake);
+  end
+
+issingular(m_varyingSlope_complex_zc) # NOT overparameterized
+VarCorr(m_varyingSlope_complex_zc)
+```
+
+```{julia}
+
+gof_summary = let
+  nms = [:m_varyingSlope_complex_zc, :m_varyingSlope_complex]
+  mods = eval.(nms)
+  lrt = MixedModels.likelihoodratiotest(m_varyingSlope_complex_zc, m_varyingSlope_complex)
+  DataFrame(;
+    name = nms, 
+    dof=dof.(mods),
+    deviance=round.(deviance.(mods), digits=0),
+    AIC=round.(aic.(mods),digits=0),
+    AICc=round.(aicc.(mods),digits=0),
+    BIC=round.(bic.(mods),digits=0),
+    χ²=vcat(:., round.(lrt.tests.deviancediff, digits=0)),
+    χ²_dof=vcat(:., round.(lrt.tests.dofdiff, digits=0)),
+    pvalue=vcat(:., round.(lrt.tests.pvalues, digits=3))
+  )
+end
+
+```
+_complex_zc is slightly favored by BIC (not by AIC though). We will proceed with zercorr from here on.
+
+#### Throwing out random effect terms
+
+Leaving out input noise:
+```{julia}
+#| label: m_varyingSlope1
+
+m_varyingSlope1 = let
+    varSlope = @formula(distance_to_spaceship ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + zerocorr(1 + N_visible_obstacles * N_visible_drift_tiles | ID));
+    fit(MixedModel, varSlope, my_data; contrasts=my_cake);
+  end
+
+issingular(m_varyingSlope1) # NOT overparameterized
+
+```
+
+```{julia}
+
+gof_summary = let
+  nms = [:m_varyingSlope1, :m_varyingSlope_complex_zc]
+  mods = eval.(nms)
+  lrt = MixedModels.likelihoodratiotest(m_varyingSlope1, m_varyingSlope_complex_zc)
+  DataFrame(;
+    name = nms, 
+    dof=dof.(mods),
+    deviance=round.(deviance.(mods), digits=0),
+    AIC=round.(aic.(mods),digits=0),
+    AICc=round.(aicc.(mods),digits=0),
+    BIC=round.(bic.(mods),digits=0),
+    χ²=vcat(:., round.(lrt.tests.deviancediff, digits=0)),
+    χ²_dof=vcat(:., round.(lrt.tests.dofdiff, digits=0)),
+    pvalue=vcat(:., round.(lrt.tests.pvalues, digits=3))
+  )
+end
+
+```
+_complex_zc is favored by BIC.
+
+Leaving out N_visible_obstacles:
+```{julia}
+#| label: m_varyingSlope2
+
+m_varyingSlope2 = let
+    varSlope = @formula(distance_to_spaceship ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + zerocorr(1 + N_visible_drift_tiles + input_noise | ID));
+    fit(MixedModel, varSlope, my_data; contrasts=my_cake);
+  end
+
+issingular(m_varyingSlope2) # NOT overparameterized
+
+```
+
+```{julia}
+
+gof_summary = let
+  nms = [:m_varyingSlope2, :m_varyingSlope_complex_zc]
+  mods = eval.(nms)
+  lrt = MixedModels.likelihoodratiotest(m_varyingSlope2, m_varyingSlope_complex_zc)
+  DataFrame(;
+    name = nms, 
+    dof=dof.(mods),
+    deviance=round.(deviance.(mods), digits=0),
+    AIC=round.(aic.(mods),digits=0),
+    AICc=round.(aicc.(mods),digits=0),
+    BIC=round.(bic.(mods),digits=0),
+    χ²=vcat(:., round.(lrt.tests.deviancediff, digits=0)),
+    χ²_dof=vcat(:., round.(lrt.tests.dofdiff, digits=0)),
+    pvalue=vcat(:., round.(lrt.tests.pvalues, digits=3))
+  )
+end
+
+```
+Again, m_varyingSlope_complex_zc is favored.
+
+Leaving out N_visible_drift_tiles:
+```{julia}
+#| label: m_varyingSlope3
+
+m_varyingSlope3 = let
+    varSlope = @formula(distance_to_spaceship ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + zerocorr(1 + N_visible_obstacles + input_noise | ID));
+    fit(MixedModel, varSlope, my_data; contrasts=my_cake);
+  end
+
+issingular(m_varyingSlope3) # NOT overparameterized
+
+```
+
+```{julia}
+
+gof_summary = let
+  nms = [:m_varyingSlope3, :m_varyingSlope_complex_zc]
+  mods = eval.(nms)
+  lrt = MixedModels.likelihoodratiotest(m_varyingSlope3, m_varyingSlope_complex_zc)
+  DataFrame(;
+    name = nms, 
+    dof=dof.(mods),
+    deviance=round.(deviance.(mods), digits=0),
+    AIC=round.(aic.(mods),digits=0),
+    AICc=round.(aicc.(mods),digits=0),
+    BIC=round.(bic.(mods),digits=0),
+    χ²=vcat(:., round.(lrt.tests.deviancediff, digits=0)),
+    χ²_dof=vcat(:., round.(lrt.tests.dofdiff, digits=0)),
+    pvalue=vcat(:., round.(lrt.tests.pvalues, digits=3))
+  )
+end
+
+```
+m_varyingSlope_complex_zc prevails. We will therefore refer to _complex_zc for hypothesis testing.
+
+## Model selection
+```{julia}
+VarCorr(m_varyingSlope_complex_zc)
+last(m_varyingSlope_complex_zc.λ)
+```
+
+## Bootstrapping
+
+```{julia}
+samples = parametricbootstrap(RNG, N_iterations, m_varyingSlope_complex_zc)
+tbl = samples.tbl
+```
+
+### Plotting
+```{julia}
+plt = data(tbl) * mapping(:σ) * AoG.density()
+draw(plt; axis=(;title="Parametric bootstrap estimates of σ"))
+```
+
+Taking a look at the distributions of the estimates for the main effects:
+
+leaving out intercept...
+```{julia}
+plt = data(tbl) * mapping(
+  [:β2, :β3, :β4, :β5, :β6] .=> "Bootstrap replicates of main effect estimates";
+  color=dims(1) => renamer([ "N_obstacles", "N_drift", "input_noiseW", "input_noiseS", "N_obstacles * N_drift"])
+  ) * AoG.density()
+draw(plt; figure=(;supertitle="Parametric bootstrap β estimates of variance components"))
+```
+
+```{julia}
+confint(samples)
+```
+
+The ridgeplot will show us the estimates and their distributions (as plotted above). We will omit the intercept because it would zoom out too much.
+```{julia}
+ridgeplot(samples; show_intercept=false, xlabel="Bootstrap density and 95%CI")
+```
+
+Zooming in on the interaction effect
+```{julia}
+plt = data(tbl) * mapping(
+  [:β6] .=> "Bootstrap replicates of main effect estimates";
+  color=dims(1) => renamer([ "N_visible_obstacles*N_visible_drift_tiles"])
+  ) * AoG.density()
+draw(plt; figure=(;supertitle="Parametric bootstrap β estimates of variance components"))
+```
+
+We detect significant effects for **N_visible_obstacles** , **N_visible_drift_tiles** individually but not for their interaction effect. Both levels of input noise: **input noise Weak** and **input noise Strong** also have an significant effect on fixation location in resting fixations.
