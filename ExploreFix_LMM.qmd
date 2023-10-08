@@ -81,7 +81,7 @@ We will declare **ID** and **total_control_loss** as a grouping variable as well
 my_cake = Dict(
   :ID => Grouping(),
   :total_control_loss => Grouping(),
-  :Test => HypothesisCoding(
+  :input_noise => HypothesisCoding(
     [
       -1 +1 0
       0 -1 +1
@@ -202,7 +202,6 @@ issingular(m_varyingSlope_complex_zc)
 ```
 
 ```{julia}
-#MixedModels.likelihoodratiotest(m_varyingSlope_complex, m_varyingSlope_complex_zc)
 
 gof_summary = let
   nms = [:m_varyingSlope_complex, :m_varyingSlope_complex_zc]
@@ -520,7 +519,6 @@ m_varyingSlope1 = let
   end
 
 issingular(m_varyingSlope1)
-VarCorr(m_varyingSlope1)
 
 ```
 
@@ -618,16 +616,17 @@ end
 BIC favors model m_varyingSlope_complex_ni. We'll stick with this one.
 
 ## Model selection
+Now we can actually take a closer look at the main effects.
 
+Via a PCA, we can check whether loadings of our various main effects on the different principle components make sense. 
 ```{julia}
 #m_varyingSlope4
 MixedModels.PCA(m_varyingSlope_complex_ni)
 ```
-no valuable information due to zerocorr
 
 ## Caterpillar plot
 
-we can confirm the correlation between random effects visually by looking at the caterpillar:
+We can confirm the correlation between random effects visually by looking at the caterpillar:
 ```{julia}
 #| fig-cap1: Prediction intervals on subject random effects for model m_varyingSlope
 #| label: fig-cm_varyingSlope
@@ -646,7 +645,7 @@ caterpillar!(Figure(; resolution=(800, 1200)), cm_varyingSlope; orderby=1)
 shrinkageplot!(Figure(; resolution=(1000, 1200)), m_varyingSlope_complex_ni)
 
 ```
-Not much shrinkage happening.
+Not much shrinkage happening. Meaning we already had a good linear trend across the data.
 
 ## Bootstrapping
 
