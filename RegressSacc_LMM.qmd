@@ -697,4 +697,4 @@ plt = data(tbl) * mapping(
 draw(plt; figure=(;supertitle="Parametric bootstrap β estimates of variance components"))
 ```
 
-Finally we can say that we find significant effects for N_visible_obstacles and N_visible_drift_tiles individually but not for their interaction. We find no significant effects for either level of input noise.
+Finally we can say that we find significant effects for **N_visible_obstacles** and **N_visible_drift_tiles** individually but **not** for their interaction term. We find no significant effects for either level of input noise.
