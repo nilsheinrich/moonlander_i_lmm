@@ -73,17 +73,17 @@ We will declare **ID** and **total_control_loss** as a grouping variable as well
 
 #### Hypothesis Coding
 ```{julia}
+
 my_cake = Dict(
   :ID => Grouping(),
   :total_control_loss => Grouping(),
-  :input_noise => EffectsCoding(; levels=["N", "W", "S"]),
-  :Test => HypothesisCoding(
+  :input_noise => HypothesisCoding(
     [
       -1 +1 0
-      -1 0 +1
+      0 -1 +1
     ];
     levels=["N", "W", "S"],
-    labels=["No_inputNoise", "Weak_inputNoise", "Strong_inputNoise"],
+    labels=["weak-none", "strong-weak"],
   ),
 );
 ```
@@ -130,6 +130,7 @@ issingular(m_varyingInt2)
 VarCorr(m_varyingInt2)
 
 ```
+ID seems to work as random effect.
 
 ### Exploring random effects structure of the model
 We start by building the most complex random effects structure around ID (just dumping all of the fixed effects in the varying slope). 
@@ -142,42 +143,64 @@ m_varyingSlope_complex = let
     fit(MixedModel, varSlop, my_data; contrasts=my_cake);
   end
 
-issingular(m_varyingSlope_complex)  # overparameterized
+issingular(m_varyingSlope_complex)  # NOT overparameterized
 ```
-The interaction effect between the two continuous random effects might cause singularity.
+The interaction effect between the two continuous random effects might be overfitting.
 
+We will build a model without the interaction term and test the models against each other.
 ```{julia}
-#| label: m_varyingSlope_complex
+#| label: m_varyingSlope_complex_ni
 
-m_varyingSlope_complex = let
+m_varyingSlope_complex_ni = let
     varSlop = @formula(log(saccade_amplitude) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + (1 + N_visible_obstacles + N_visible_drift_tiles + input_noise | ID));
     fit(MixedModel, varSlop, my_data; contrasts=my_cake);
   end
 
-issingular(m_varyingSlope_complex)  # NOT overparameterized
-```
-That was the case. Now we're good. Proceeding from here.
-
-#### Building models of less complexity
-
-Not allowing correlation between random effects
-```{julia}
-#| label: m_varyingSlope_complex_nc
-
-m_varyingSlope_complex_nc = let
-    varSlop = @formula(log(saccade_amplitude) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + zerocorr(1 + N_visible_obstacles + N_visible_drift_tiles + input_noise | ID));
-    fit(MixedModel, varSlop, my_data; contrasts=my_cake);
-  end
-
-issingular(m_varyingSlope_complex_nc)  # NOT overparameterized
+issingular(m_varyingSlope_complex_ni)  # NOT overparameterized
 ```
 
 ```{julia}
 
 gof_summary = let
-  nms = [:m_varyingSlope_complex, :m_varyingSlope_complex_nc]
+  nms = [:m_varyingSlope_complex, :m_varyingSlope_complex_ni]
   mods = eval.(nms)
-  lrt = MixedModels.likelihoodratiotest(m_varyingSlope_complex, m_varyingSlope_complex_nc)
+  lrt = MixedModels.likelihoodratiotest(m_varyingSlope_complex, m_varyingSlope_complex_ni)
+  DataFrame(;
+    name = nms, 
+    dof=dof.(mods),
+    deviance=round.(deviance.(mods), digits=0),
+    AIC=round.(aic.(mods),digits=0),
+    AICc=round.(aicc.(mods),digits=0),
+    BIC=round.(bic.(mods),digits=0),
+    χ²=vcat(:., round.(lrt.tests.deviancediff, digits=0)),
+    χ²_dof=vcat(:., round.(lrt.tests.dofdiff, digits=0)),
+    pvalue=vcat(:., round.(lrt.tests.pvalues, digits=3))
+  )
+end
+
+```
+Yes _ni is favored when referring to BIC. We will proceed with that one...
+
+#### Building models of less complexity
+
+Not allowing correlation between random effects
+```{julia}
+#| label: m_varyingSlope_complex_zc
+
+m_varyingSlope_complex_zc = let
+    varSlop = @formula(log(saccade_amplitude) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + zerocorr(1 + N_visible_obstacles + N_visible_drift_tiles + input_noise | ID));
+    fit(MixedModel, varSlop, my_data; contrasts=my_cake);
+  end
+
+issingular(m_varyingSlope_complex_zc)  # NOT overparameterized
+```
+
+```{julia}
+
+gof_summary = let
+  nms = [:m_varyingSlope_complex_ni, :m_varyingSlope_complex_zc]
+  mods = eval.(nms)
+  lrt = MixedModels.likelihoodratiotest(m_varyingSlope_complex_ni, m_varyingSlope_complex_zc)
   DataFrame(;
     name = nms, 
     dof=dof.(mods),
@@ -205,12 +228,13 @@ m_varyingSlope1 = let
 
 issingular(m_varyingSlope1)  # NOT overparameterized
 ```
+
 ```{julia}
 
 gof_summary = let
-  nms = [:m_varyingSlope1, :m_varyingSlope_complex_nc]
+  nms = [:m_varyingSlope1, :m_varyingSlope_complex_zc]
   mods = eval.(nms)
-  lrt = MixedModels.likelihoodratiotest(m_varyingSlope1, m_varyingSlope_complex_nc)
+  lrt = MixedModels.likelihoodratiotest(m_varyingSlope1, m_varyingSlope_complex_zc)
   DataFrame(;
     name = nms, 
     dof=dof.(mods),
@@ -242,9 +266,9 @@ issingular(m_varyingSlope2)  # NOT overparameterized
 ```{julia}
 
 gof_summary = let
-  nms = [:m_varyingSlope2, :m_varyingSlope_complex_nc]
+  nms = [:m_varyingSlope2, :m_varyingSlope_complex_zc]
   mods = eval.(nms)
-  lrt = MixedModels.likelihoodratiotest(m_varyingSlope2, m_varyingSlope_complex_nc)
+  lrt = MixedModels.likelihoodratiotest(m_varyingSlope2, m_varyingSlope_complex_zc)
   DataFrame(;
     name = nms, 
     dof=dof.(mods),
@@ -261,7 +285,7 @@ end
 ```
 Nope. Going to keep N_visible_obstacles as well.
 
-Leaving out N_visible_drift_tiles
+Finally, leaving out N_visible_drift_tiles
 ```{julia}
 #| label: m_varyingSlope3
 
@@ -276,9 +300,9 @@ issingular(m_varyingSlope3)  # NOT overparameterized
 ```{julia}
 
 gof_summary = let
-  nms = [:m_varyingSlope3, :m_varyingSlope_complex_nc]
+  nms = [:m_varyingSlope3, :m_varyingSlope_complex_zc]
   mods = eval.(nms)
-  lrt = MixedModels.likelihoodratiotest(m_varyingSlope3, m_varyingSlope_complex_nc)
+  lrt = MixedModels.likelihoodratiotest(m_varyingSlope3, m_varyingSlope_complex_zc)
   DataFrame(;
     name = nms, 
     dof=dof.(mods),
@@ -293,7 +317,7 @@ gof_summary = let
 end
 
 ```
-Referring to BIC, we will keep this random slope effect also. We will do hypothesis testing on m_varyingSlope_complex_nc, because it seems to be the model that describes the data best.
+Close but referring to BIC, we will keep this random slope effect also. We will do hypothesis testing on m_varyingSlope_complex_zc, because it seems to be the model that describes the data best.
 
 ## Caterpillar plot
 
@@ -301,26 +325,27 @@ Referring to BIC, we will keep this random slope effect also. We will do hypothe
 #| fig-cap1: Prediction intervals on subject random effects for model m_varyingSlope
 #| label: fig-cm_varyingSlope
 #|
-cm_varyingSlope = first(ranefinfo(m_varyingSlope_complex_nc));
+cm_varyingSlope = first(ranefinfo(m_varyingSlope_complex_zc));
 caterpillar!(Figure(; resolution=(800, 1200)), cm_varyingSlope; orderby=1)
 ```
 This plot hints towards no correlation between the random effects.
 
 ## Shrinkage plot
 
+We can also take a look at the shrinkage happening (adjusting linear trends of individual data points).
 ```{julia}
 #| code-fold: true
 #| label: fig-shrinkage
 #|
 #| fig-cap: Shrinkage plots of the subject random effects in the chosen model
-shrinkageplot!(Figure(; resolution=(1000, 1200)), m_varyingSlope_complex_nc)
+shrinkageplot!(Figure(; resolution=(1000, 1200)), m_varyingSlope_complex_zc)
 
 ```
 
 ## Bootstrapping
 
 ```{julia}
-samples = parametricbootstrap(RNG, N_iterations, m_varyingSlope_complex_nc)
+samples = parametricbootstrap(RNG, N_iterations, m_varyingSlope_complex_zc)
 tbl = samples.tbl
 ```
 
@@ -452,25 +477,25 @@ No interaction is slightly favored by BIC (not AIC though). Proceeding without i
 
 Stating no correlation between random effects
 ```{julia}
-#| label: m_varyingSlope_complex_nc
+#| label: m_varyingSlope_complex_zc
 
-m_varyingSlope_complex_nc = let
+m_varyingSlope_complex_zc = let
     varSlop = @formula(saccLandSite_dist_to_spaceship ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + zerocorr(1 + N_visible_obstacles + N_visible_drift_tiles + input_noise | ID));
     fit(MixedModel, varSlop, my_data; contrasts=my_cake);
   end
 
-issingular(m_varyingSlope_complex_nc)  # NOT overparameterized
-VarCorr(m_varyingSlope_complex_nc)
-last(m_varyingSlope_complex_nc.λ)
+issingular(m_varyingSlope_complex_zc)  # NOT overparameterized
+VarCorr(m_varyingSlope_complex_zc)
+last(m_varyingSlope_complex_zc.λ)
 
 ```
 
 ```{julia}
 
 gof_summary = let
-  nms = [:m_varyingSlope_complex_ni, :m_varyingSlope_complex_nc]
+  nms = [:m_varyingSlope_complex_ni, :m_varyingSlope_complex_zc]
   mods = eval.(nms)
-  lrt = MixedModels.likelihoodratiotest(m_varyingSlope_complex_ni, m_varyingSlope_complex_nc)
+  lrt = MixedModels.likelihoodratiotest(m_varyingSlope_complex_ni, m_varyingSlope_complex_zc)
   DataFrame(;
     name = nms, 
     dof=dof.(mods),
@@ -485,7 +510,7 @@ gof_summary = let
 end
 
 ```
-No correlation is supported by BIC (but not by AIC). Will keep nc.
+ZeroCorr is favored when referring to BIC (not supported by AIC though). Will proceed with m_varyingSlope_complex_zc...
 
 ### Ditching individual random effects
 
@@ -507,9 +532,9 @@ last(m_varyingSlope1.λ)
 ```{julia}
 
 gof_summary = let
-  nms = [:m_varyingSlope1, :m_varyingSlope_complex_nc]
+  nms = [:m_varyingSlope1, :m_varyingSlope_complex_zc]
   mods = eval.(nms)
-  lrt = MixedModels.likelihoodratiotest(m_varyingSlope1, m_varyingSlope_complex_nc)
+  lrt = MixedModels.likelihoodratiotest(m_varyingSlope1, m_varyingSlope_complex_zc)
   DataFrame(;
     name = nms, 
     dof=dof.(mods),
@@ -544,9 +569,9 @@ last(m_varyingSlope2.λ)
 ```{julia}
 
 gof_summary = let
-  nms = [:m_varyingSlope2, :m_varyingSlope_complex_nc]
+  nms = [:m_varyingSlope2, :m_varyingSlope_complex_zc]
   mods = eval.(nms)
-  lrt = MixedModels.likelihoodratiotest(m_varyingSlope2, m_varyingSlope_complex_nc)
+  lrt = MixedModels.likelihoodratiotest(m_varyingSlope2, m_varyingSlope_complex_zc)
   DataFrame(;
     name = nms, 
     dof=dof.(mods),
@@ -581,9 +606,9 @@ last(m_varyingSlope3.λ)
 ```{julia}
 
 gof_summary = let
-  nms = [:m_varyingSlope3, :m_varyingSlope_complex_nc]
+  nms = [:m_varyingSlope3, :m_varyingSlope_complex_zc]
   mods = eval.(nms)
-  lrt = MixedModels.likelihoodratiotest(m_varyingSlope3, m_varyingSlope_complex_nc)
+  lrt = MixedModels.likelihoodratiotest(m_varyingSlope3, m_varyingSlope_complex_zc)
   DataFrame(;
     name = nms, 
     dof=dof.(mods),
@@ -602,13 +627,13 @@ Keeping N_visible_drift_tiles is also supported by BIC (and AIC).
 
 ## Model selection
 
-m_varyingSlope_complex_nc prevailed. Now we can take a look at the fixed effects.
+m_varyingSlope_complex_zc prevailed. Now we can take a look at the fixed effects.
 
 ```{julia}
 #| label: investigate m_varyingSlope_complex_nc
 
-VarCorr(m_varyingSlope_complex_nc)  # no zeroes in Variance or Std.Dev.
-last(m_varyingSlope_complex_nc.λ)  # no zeroes on diagonal
+VarCorr(m_varyingSlope_complex_zc)  # no zeroes in Variance or Std.Dev.
+last(m_varyingSlope_complex_zc.λ)  # no zeroes on diagonal
 
 ```
 
@@ -618,26 +643,26 @@ last(m_varyingSlope_complex_nc.λ)  # no zeroes on diagonal
 #| fig-cap1: Prediction intervals on subject random effects for model m_varyingSlope_complex
 #| label: fig-cm_varyingSlope
 #|
-cm_varyingSlope = first(ranefinfo(m_varyingSlope_complex_nc));
+cm_varyingSlope = first(ranefinfo(m_varyingSlope_complex_zc));
 caterpillar!(Figure(; resolution=(800, 1200)), cm_varyingSlope; orderby=1)
 ```
 
 ## Shrinkage plot
 
-Where was strength borrowed and applied to which data points?
+Where has strength been borrowed and applied to individual data points?
 ```{julia}
 #| code-fold: true
 #| label: fig-shrinkage
 #|
 #| fig-cap: Shrinkage plots of the subject random effects in the chosen model
-shrinkageplot!(Figure(; resolution=(1000, 1200)), m_varyingSlope_complex_nc)
+shrinkageplot!(Figure(; resolution=(1000, 1200)), m_varyingSlope_complex_zc)
 
 ```
 
 ## Bootstrapping
 
 ```{julia}
-samples = parametricbootstrap(RNG, N_iterations, m_varyingSlope_complex_nc)
+samples = parametricbootstrap(RNG, N_iterations, m_varyingSlope_complex_zc)
 tbl = samples.tbl
 ```
 

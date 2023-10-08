@@ -89,7 +89,7 @@ We will declare **ID** and **total_control_loss** as a grouping variable as well
 
 my_cake = Dict(
   :ID => Grouping(),
-  #:input_noise => EffectsCoding(; levels=["N", "W", "S"]),
+  :total_control_loss => Grouping(),
   :input_noise => HypothesisCoding(
     [
       -1 +1 0
