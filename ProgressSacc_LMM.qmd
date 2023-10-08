@@ -93,10 +93,10 @@ my_cake = Dict(
   :input_noise => HypothesisCoding(
     [
       -1 +1 0
-      -1 0 +1
+      0 -1 +1
     ];
     levels=["N", "W", "S"],
-    labels=["No_inputNoise", "Weak_inputNoise", "Strong_inputNoise"],
+    labels=["weak-none", "strong-weak"],
   ),
 );
 ```
@@ -143,6 +143,7 @@ issingular(m_varyingInt2)
 VarCorr(m_varyingInt2)
 
 ```
+ID will be kept as random effect. We are good to go and explore random slope effects.
 
 ### Exploring random effects structure of the model
 We start by building the most complex random effects structure around ID (just dumping all of the fixed effects in the varying slope). 
@@ -155,24 +156,46 @@ m_varyingSlope_complex = let
     fit(MixedModel, varSlop, my_data; contrasts=my_cake);
   end
 
-issingular(m_varyingSlope_complex)  # overparameterized
+issingular(m_varyingSlope_complex)  # NOT overparameterized
 ```
-The interaction effect between the two continuous random effects might cause singularity.
+The interaction effect between the two continuous random effects might be overfitting.
 
 ```{julia}
-#| label: m_varyingSlope_complex
+#| label: m_varyingSlope_complex_ni
 
-m_varyingSlope_complex = let
+m_varyingSlope_complex_ni = let
     varSlop = @formula(log(saccade_amplitude) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + (1 + N_visible_obstacles + N_visible_drift_tiles + input_noise | ID));
     fit(MixedModel, varSlop, my_data; contrasts=my_cake);
   end
 
-issingular(m_varyingSlope_complex)
-VarCorr(m_varyingSlope_complex)
-last(m_varyingSlope_complex.λ)  # no zeroes on the diagonal.
+issingular(m_varyingSlope_complex_ni)
+VarCorr(m_varyingSlope_complex_ni)
+last(m_varyingSlope_complex_ni.λ)  # no zeroes on the diagonal.
 
 ```
-We will proceed with this complex model structure.
+Testing both complex models against each other:
+
+```{julia}
+
+gof_summary = let
+  nms = [:m_varyingSlope_complex, :m_varyingSlope_complex_ni]
+  mods = eval.(nms)
+  lrt = MixedModels.likelihoodratiotest(m_varyingSlope_complex, m_varyingSlope_complex_ni)
+  DataFrame(;
+    name = nms, 
+    dof=dof.(mods),
+    deviance=round.(deviance.(mods), digits=0),
+    AIC=round.(aic.(mods),digits=0),
+    AICc=round.(aicc.(mods),digits=0),
+    BIC=round.(bic.(mods),digits=0),
+    χ²=vcat(:., round.(lrt.tests.deviancediff, digits=0)),
+    χ²_dof=vcat(:., round.(lrt.tests.dofdiff, digits=0)),
+    pvalue=vcat(:., round.(lrt.tests.pvalues, digits=3))
+  )
+end
+
+```
+Referring to BIC, the model without the interaction term wins. We will therefore proceed with that one.
 
 #### Building models of less complexity
 ```{julia}
@@ -193,9 +216,9 @@ Throwing _complex and _complex_zc against each other.
 ```{julia}
 
 gof_summary = let
-  nms = [:m_varyingSlope_complex, :m_varyingSlope_complex_zc]
+  nms = [:m_varyingSlope_complex_ni, :m_varyingSlope_complex_zc]
   mods = eval.(nms)
-  lrt = MixedModels.likelihoodratiotest(m_varyingSlope_complex, m_varyingSlope_complex_zc)
+  lrt = MixedModels.likelihoodratiotest(m_varyingSlope_complex_ni, m_varyingSlope_complex_zc)
   DataFrame(;
     name = nms, 
     dof=dof.(mods),
@@ -349,6 +372,7 @@ This plot hints towards no correlation between the random effects.
 shrinkageplot!(Figure(; resolution=(1000, 1200)), m_varyingSlope_complex_zc)
 
 ```
+We see some shrinkage happening. Here we borrow strength in terms of applying the linear trend that can be found in the general data to individual data points that didn't show this linear trend. 
 
 ## Bootstrapping
 
@@ -385,12 +409,35 @@ plt = data(tbl) * mapping(
 draw(plt; figure=(;supertitle="Parametric bootstrap β estimates of variance components"))
 ```
 
-We see significance only for the **N_visible_obstacles** and the interaction effect **N_visible_obstacles*N_visible_drift_tiles** (confint), meaning these covariates significantly influence saccade amplitude in progressive saccades.
+We see significance only for the **N_visible_obstacles**, meaning this covariate significantly influences saccade amplitude in progressive saccades.
 
 # Exploratory analysis: Modeling saccade landing site distance to spaceship
 
 ## Explore random effects
-Leaving total_control_loss out from the start
+
+Including both, ID and total_control_loss as random intercept effect.
+```{julia}
+#| label: m_varyingInt1
+
+m_varyingInt1 = let
+    varInt = @formula(saccLandSite_dist_to_spaceship ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + (1 | ID) + (1 | total_control_loss));
+    fit(MixedModel, varInt, my_data; contrasts=my_cake);
+  end
+
+issingular(m_varyingInt1)
+#VarCorr(m_varyingInt1)
+#last(m_varyingInt1.λ)
+
+```
+We detect singularity. Against expecting total_control_loss to be the issue here.
+
+```{julia}
+
+VarCorr(m_varyingInt1)
+
+```
+
+Leaving out total_control_loss
 ```{julia}
 #| label: m_varyingInt1
 
@@ -404,7 +451,7 @@ VarCorr(m_varyingInt1)
 last(m_varyingInt1.λ)
 
 ```
-We will keep ID as random effect and include random slope effects.
+We will keep ID as random effect and explore random slope effects.
 
 ## Building models
 Building the most complex model:
@@ -611,6 +658,7 @@ m_varyingSlope_zc wins again. It seems that this is the best model for describin
 
 ## Caterpillar plot
 
+The caterpillar plot allows for visually validating no correlation between random effects.
 ```{julia}
 #| fig-cap1: Prediction intervals on subject random effects for model m_varyingSlope_complex
 #| label: fig-cm_varyingSlope
@@ -629,6 +677,7 @@ caterpillar!(Figure(; resolution=(800, 1200)), cm_varyingSlope; orderby=1)
 shrinkageplot!(Figure(; resolution=(1000, 1200)), m_varyingSlope_zc)
 
 ```
+Again shrinkage happens to data points that didn't show a strong linear trend before.
 
 ## Bootstrapping
 
@@ -657,6 +706,15 @@ confint(samples)
 Native ridgeplot
 ```{julia}
 ridgeplot(samples; show_intercept=false, xlabel="Bootstrap density and 95%CI")
+```
+
+Zooming in on the interaction effect.
+```{julia}
+plt = data(tbl) * mapping(
+  [:β6] .=> "Bootstrap replicates of main effect estimates";
+  color=dims(1) => renamer([ "N_visible_obstacles*N_visible_drift_tiles"])
+  ) * AoG.density()
+draw(plt; figure=(;supertitle="Parametric bootstrap β estimates of variance components"))
 ```
 
 When modeling saccade landing site in terms of distance to spaceship, we find significant effects for N_visible_obstacles, N_visible_drift_tiles, and their interaction effect. We however find **no** effect for either level of input noise. Therefore we can derive that input noise does not affect the distance to the spaceship in saccade landing sites in progressive saccades.
