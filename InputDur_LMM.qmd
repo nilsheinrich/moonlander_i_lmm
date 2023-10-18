@@ -74,14 +74,13 @@ We will declare **ID** as a grouping variable as well as define the effects codi
 my_cake = Dict(
   :ID => Grouping(),
   :total_control_loss => Grouping(),
-  :input_noise => EffectsCoding(; levels=["N", "W", "S"]),
-  :Test => HypothesisCoding(
+  :input_noise => HypothesisCoding(
     [
       -1 +1 0
-      -1 0 +1
+      0 -1 +1
     ];
     levels=["N", "W", "S"],
-    labels=["No_inputNoise", "Weak_inputNoise", "Strong_inputNoise"],
+    labels=["weak-none", "strong-weak"],
   ),
 );
 ```
@@ -158,22 +157,22 @@ Referring to BIC, no interaction is favored (AIC however favors the complex mode
 
 Stating zero correlation within random effects structure
 ```{julia}
-#| label: m_varyingSlope_complex_nc
+#| label: m_varyingSlope_complex_zc
 
-m_varyingSlope_complex_nc = let
+m_varyingSlope_complex_zc = let
     varSlop = @formula(log(input_duration) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + zerocorr(1 + N_visible_obstacles + N_visible_drift_tiles + input_noise | ID));
     fit(MixedModel, varSlop, my_data; contrasts=my_cake);
   end
 
-issingular(m_varyingSlope_complex_nc)  # NOT overparameterized
-VarCorr(m_varyingSlope_complex_nc) # no zeroes in Variance or Std.Dev.
-last(m_varyingSlope_complex_nc.λ) # no zeroes on diagonal
+issingular(m_varyingSlope_complex_zc)  # NOT overparameterized
+VarCorr(m_varyingSlope_complex_zc) # no zeroes in Variance or Std.Dev.
+last(m_varyingSlope_complex_zc.λ) # no zeroes on diagonal
 ```
 
 ```{julia}
 
 gof_summary = let
-  nms = [:m_varyingSlope_complex_nc, :m_varyingSlope_complex_ni]
+  nms = [:m_varyingSlope_complex_zc, :m_varyingSlope_complex_ni]
   mods = eval.(nms)
   lrt = MixedModels.likelihoodratiotest(m_varyingSlope_complex_nc, m_varyingSlope_complex_ni)
   DataFrame(;
@@ -190,7 +189,7 @@ gof_summary = let
 end
 
 ```
-BIC favors _complex_nc and therefore correlation between random effects (AIC favors correlation though). Proceeding with m_varyingSlope_complex_nc and starting to delete individual random effects.
+BIC favors _complex_zc and therefore correlation between random effects (AIC favors correlation though). Proceeding with m_varyingSlope_complex_zc and starting to delete individual random effects.
 
 Deleting input noise
 ```{julia}
@@ -209,7 +208,7 @@ last(m_varyingSlope1.λ) # no zeroes on diagonal
 ```{julia}
 
 gof_summary = let
-  nms = [:m_varyingSlope_complex_nc, :m_varyingSlope1]
+  nms = [:m_varyingSlope_complex_zc, :m_varyingSlope1]
   mods = eval.(nms)
   lrt = MixedModels.likelihoodratiotest(m_varyingSlope_complex_nc, m_varyingSlope1)
   DataFrame(;
@@ -245,7 +244,7 @@ issingular(m_varyingSlope2)  # NOT overparameterized
 ```{julia}
 
 gof_summary = let
-  nms = [:m_varyingSlope_complex_nc, :m_varyingSlope2]
+  nms = [:m_varyingSlope_complex_zc, :m_varyingSlope2]
   mods = eval.(nms)
   lrt = MixedModels.likelihoodratiotest(m_varyingSlope_complex_nc, m_varyingSlope2)
   DataFrame(;
@@ -281,7 +280,7 @@ issingular(m_varyingSlope3)  # NOT overparameterized
 ```{julia}
 
 gof_summary = let
-  nms = [:m_varyingSlope_complex_nc, :m_varyingSlope3]
+  nms = [:m_varyingSlope_complex_zc, :m_varyingSlope3]
   mods = eval.(nms)
   lrt = MixedModels.likelihoodratiotest(m_varyingSlope_complex_nc, m_varyingSlope3)
   DataFrame(;
@@ -301,7 +300,7 @@ end
 BIC and AIC agree on keeping N_visible_drift_tiles as random slope effect.
 
 ## Model selection
-m_varyingSlope_complex_nc
+m_varyingSlope_complex_zc
 
 ## Caterpillar plot
 
@@ -309,7 +308,7 @@ m_varyingSlope_complex_nc
 #| fig-cap1: Prediction intervals on subject random effects for model m_varyingSlope
 #| label: fig-cm_varyingSlope
 #|
-cm_varyingSlope = first(ranefinfo(m_varyingSlope_complex_nc));
+cm_varyingSlope = first(ranefinfo(m_varyingSlope_complex_zc));
 caterpillar!(Figure(; resolution=(800, 1200)), cm_varyingSlope; orderby=1)
 ```
 This plot hints towards no correlation between the random effects.
@@ -321,14 +320,14 @@ This plot hints towards no correlation between the random effects.
 #| label: fig-shrinkage
 #|
 #| fig-cap: Shrinkage plots of the subject random effects in the chosen model
-shrinkageplot!(Figure(; resolution=(1000, 1200)), m_varyingSlope_complex_nc)
+shrinkageplot!(Figure(; resolution=(1000, 1200)), m_varyingSlope_complex_zc)
 
 ```
 
 ## Bootstrapping
 
 ```{julia}
-samples = parametricbootstrap(RNG, N_iterations, m_varyingSlope_complex_nc)
+samples = parametricbootstrap(RNG, N_iterations, m_varyingSlope_complex_zc)
 tbl = samples.tbl
 ```
 

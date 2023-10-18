@@ -88,14 +88,13 @@ We will declare **ID** a grouping variable as well as define the effects coding 
 ```{julia}
 my_cake = Dict(
   :ID => Grouping(),
-  #:input_noise => EffectsCoding(; levels=["N", "W", "S"]),
   :input_noise => HypothesisCoding(
     [
       -1 +1 0
-      -1 0 +1
+      0 -1 +1
     ];
     levels=["N", "W", "S"],
-    labels=["No_inputNoise", "Weak_inputNoise", "Strong_inputNoise"],
+    labels=["weak-none", "strong-weak"],
   ),
 );
 
