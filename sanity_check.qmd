@@ -1,0 +1,380 @@
+---
+title: "Nils Wendel Heinrich: Sanity check"
+subtitle: "Moonlander I - Analysis"
+author: "Nils Wendel Heinrich"
+date: "2023-10-23"
+format:
+  html:
+    embed-resources: true
+    toc: true
+    toc-depth: 2
+    code-fold: false
+    number-sections: true
+    fig-width: 8
+    fig-height: 6
+editor_options:
+  chunk_output_type: console
+jupyter: julia-1.9
+---
+
+## Packages
+```{julia}
+#| label: packages
+
+using Arrow
+using AlgebraOfGraphics
+using CairoMakie
+using DataFrames
+using DataFrameMacros
+using MixedModels
+using MixedModelsMakie
+using Random
+#using RCall
+
+CairoMakie.activate!(; type="svg");
+```
+
+```{julia}
+#| label: constants
+const RNG = MersenneTwister(36)
+N_iterations = 10000
+
+const AoG = AlgebraOfGraphics;
+```
+
+```{julia}
+#| label: data
+
+my_data = DataFrame(Arrow.Table("data/Experiment1_SoCData.arrow"))
+# 1425 rows
+
+# Filtering runs in which players crashed
+my_data = filter(row -> row.done, my_data)
+# y_data = filter(row -> !row.done, my_data) # for only crashs
+
+# new variable: level_difficulty based on level
+# 1 & 2: easy
+# 3 & 4: medium
+# 5 & 6: hard
+
+
+describe(my_data)
+```
+we will only consider successful runs. Crashs may lead in a strong variance in N_fixations.
+
+### Contrasts
+
+We will declare **ID** as grouping variable as well as define the effects coding for the discrete covariate input noise.
+
+#### Hypothesis Coding
+
+```{julia}
+my_cake = Dict(
+  :ID => Grouping(),
+  :input_noise => HypothesisCoding(
+    [
+      -1 +1 0
+      0 -1 +1
+    ];
+    levels=["N", "W", "S"],
+    labels=["weak-none", "strong-weak"],
+  ),
+);
+
+#contrasts = Dict(:input_noise => EffectsCoding())
+```
+
+## Building models
+
+```{julia}
+#| label: m_varyingInt1
+
+m_varyingInt1 = let
+    varInt = @formula(N_fixations ~ 1 + level_difficulty * drift + input_noise + N_consecutive_crash_success + (1 | ID));
+    fit(MixedModel, varInt, my_data; contrasts=my_cake);
+  end
+
+issingular(m_varyingInt1) # Not overparamterized
+VarCorr(m_varyingInt1)
+last(m_varyingInt1.λ)
+
+```
+Seems like both are viable random effects. Next we will explore random slope effects.
+
+### Model of highest complexity
+```{julia}
+#| label: m_varyingSlope_complex
+
+m_varyingSlope_complex = let
+    varInt = @formula(N_fixations ~ 1 + level_difficulty * drift + input_noise + N_consecutive_crash_success + 
+    (1 + level_difficulty * drift + input_noise + N_consecutive_crash_success | ID));
+    fit(MixedModel, varInt, my_data; contrasts=my_cake);
+  end
+
+issingular(m_varyingSlope_complex) # overparamterized
+
+```
+We detect singularity. We will go ahead an delete the interaction terms within the random effects structure.
+
+```{julia}
+#| label: m_varyingSlope_complex_ni
+
+m_varyingSlope_complex_ni = let
+    varInt = @formula(N_fixations ~ 1 + level_difficulty * drift + input_noise + N_consecutive_crash_success + 
+    (1 + level_difficulty + drift + input_noise + N_consecutive_crash_success | ID));
+    fit(MixedModel, varInt, my_data; contrasts=my_cake);
+  end
+
+issingular(m_varyingSlope_complex_ni) # overparamterized
+
+```
+Still singular. Stating zerocorr next.
+
+```{julia}
+#| label: m_varyingSlope_complex_zc
+
+m_varyingSlope_complex_zc = let
+    varInt = @formula(N_fixations ~ 1 + level_difficulty * drift + input_noise + N_consecutive_crash_success + 
+    zerocorr(1 + level_difficulty + drift + input_noise + N_consecutive_crash_success | ID));
+    fit(MixedModel, varInt, my_data; contrasts=my_cake);
+  end
+
+issingular(m_varyingSlope_complex_zc) # overparamterized
+
+```
+That didn't solve singularity. Starting to delete individual random slope effects.
+
+Deleted:
+- N_consecutive_crash_success
+- input_noise + N_consecutive_crash_success
+- drift + input_noise + N_consecutive_crash_success
+... detected singularity every single time.
+
+Entering a single slope effect:
+- level_difficulty
+- input_noise
+do not works,
+
+works:
+- drift
+- N_consecutive_crash_success
+- drift + N_consecutive_crash_success
+
+
+```{julia}
+#| label: m_varyingSlope_dN
+
+m_varyingSlope_dN = let
+    varInt = @formula(N_fixations ~ 1 + level_difficulty * drift + input_noise + N_consecutive_crash_success + 
+    zerocorr(1 + drift + N_consecutive_crash_success | ID));
+    fit(MixedModel, varInt, my_data; contrasts=my_cake);
+  end
+
+issingular(m_varyingSlope_dN) # NOT overparamterized
+
+```
+
+```{julia}
+#| label: m_varyingSlope_d
+
+m_varyingSlope_d = let
+    varInt = @formula(N_fixations ~ 1 + level_difficulty * drift + input_noise + N_consecutive_crash_success + 
+    zerocorr(1 + drift | ID));
+    fit(MixedModel, varInt, my_data; contrasts=my_cake);
+  end
+
+issingular(m_varyingSlope_d) # NOT overparamterized
+
+```
+
+```{julia}
+#| label: m_varyingSlope_N
+
+m_varyingSlope_N = let
+    varInt = @formula(N_fixations ~ 1 + level_difficulty * drift + input_noise + N_consecutive_crash_success + 
+    zerocorr(1 + N_consecutive_crash_success | ID));
+    fit(MixedModel, varInt, my_data; contrasts=my_cake);
+  end
+
+issingular(m_varyingSlope_N) # NOT overparamterized
+
+```
+
+Throwing models against each other:
+```{julia}
+
+gof_summary = let
+  nms = [:m_varyingSlope_dN, :m_varyingSlope_N]
+  mods = eval.(nms)
+  lrt = MixedModels.likelihoodratiotest(m_varyingSlope_dN, m_varyingSlope_N)
+  DataFrame(;
+    name = nms, 
+    dof=dof.(mods),
+    deviance=round.(deviance.(mods), digits=0),
+    AIC=round.(aic.(mods),digits=0),
+    AICc=round.(aicc.(mods),digits=0),
+    BIC=round.(bic.(mods),digits=0),
+    χ²=vcat(:., round.(lrt.tests.deviancediff, digits=0)),
+    χ²_dof=vcat(:., round.(lrt.tests.dofdiff, digits=0)),
+    pvalue=vcat(:., round.(lrt.tests.pvalues, digits=3))
+  )
+end
+
+```
+drift and N_consecutive_crash_success as random slope effects win against sole N_consecutive_crash_success.
+
+```{julia}
+
+gof_summary = let
+  nms = [:m_varyingSlope_dN, :m_varyingSlope_d]
+  mods = eval.(nms)
+  lrt = MixedModels.likelihoodratiotest(m_varyingSlope_dN, m_varyingSlope_d)
+  DataFrame(;
+    name = nms, 
+    dof=dof.(mods),
+    deviance=round.(deviance.(mods), digits=0),
+    AIC=round.(aic.(mods),digits=0),
+    AICc=round.(aicc.(mods),digits=0),
+    BIC=round.(bic.(mods),digits=0),
+    χ²=vcat(:., round.(lrt.tests.deviancediff, digits=0)),
+    χ²_dof=vcat(:., round.(lrt.tests.dofdiff, digits=0)),
+    pvalue=vcat(:., round.(lrt.tests.pvalues, digits=3))
+  )
+end
+
+```
+drift and N_consecutive_crash_success as random slope effects also win against sole drift. Therefore staying with m_varyingSlope_dN.
+
+### Model selection
+```{julia}
+#| label: main_effects
+m_varyingSlope_dN
+```
+Nothing reaches significance. Running bootstrap
+
+## Bootstrapping
+```{julia}
+samples = parametricbootstrap(RNG, N_iterations, m_varyingSlope_dN)
+tbl = samples.tbl
+```
+
+```{julia}
+confint(samples)
+```
+
+Visualizing 95% CIs individually for every covariate.
+```{julia}
+ridgeplot(samples; show_intercept=false, xlabel="Bootstrap density and 95%CI")
+```
+No significant effect found. N_fixations cannot be predicted with the covariates at hand.
+
+# Predicting N_saccades
+
+```{julia}
+#| label: m_varyingInt1
+
+m_varyingInt1 = let
+    varInt = @formula(N_saccades ~ 1 + level_difficulty * drift + input_noise + N_consecutive_crash_success + (1 | ID));
+    fit(MixedModel, varInt, my_data; contrasts=my_cake);
+  end
+
+issingular(m_varyingInt1) # Not overparamterized
+VarCorr(m_varyingInt1)
+last(m_varyingInt1.λ)
+
+```
+
+## Exploring random slope effects
+
+```{julia}
+#| label: m_varyingSlope_complex
+
+m_varyingSlope_complex = let
+    varInt = @formula(N_saccades ~ 1 + level_difficulty * drift + input_noise + N_consecutive_crash_success + 
+    (1 + level_difficulty * drift + input_noise + N_consecutive_crash_success | ID));
+    fit(MixedModel, varInt, my_data; contrasts=my_cake);
+  end
+
+issingular(m_varyingSlope_complex) # overparamterized
+#VarCorr(m_varyingSlope_complex)
+#last(m_varyingSlope_complex.λ)
+
+```
+We detect singularity. Proceeding by deleting interaction term within random effects structure.
+
+```{julia}
+#| label: m_varyingSlope_complex_ni
+
+m_varyingSlope_complex_ni = let
+    varInt = @formula(N_saccades ~ 1 + level_difficulty * drift + input_noise + N_consecutive_crash_success + 
+    (1 + level_difficulty + drift + input_noise + N_consecutive_crash_success | ID));
+    fit(MixedModel, varInt, my_data; contrasts=my_cake);
+  end
+
+issingular(m_varyingSlope_complex_ni) # overparamterized
+#VarCorr(m_varyingSlope_complex_ni)
+#last(m_varyingSlope_complex_ni.λ)
+
+```
+Still overparameterized. Stating zerocorr.
+
+```{julia}
+#| label: m_varyingSlope_complex_zc
+
+m_varyingSlope_complex_zc = let
+    varInt = @formula(N_saccades ~ 1 + level_difficulty * drift + input_noise + N_consecutive_crash_success + 
+    zerocorr(1 + level_difficulty + drift + input_noise + N_consecutive_crash_success | ID));
+    fit(MixedModel, varInt, my_data; contrasts=my_cake);
+  end
+
+issingular(m_varyingSlope_complex_zc) # overparamterized
+#VarCorr(m_varyingSlope_complex_zc)
+#last(m_varyingSlope_complex_zc.λ)
+
+```
+Didn't solve it. Proceeding by deleting individual random slope effects.
+
+Deleted:
+- N_consecutive_crash_success
+- input_noise
+- drift
+- level_difficulty
+
+- level_difficulty + N_consecutive_crash_success
+- ... nothing works
+
+```{julia}
+#| label: m_varyingSlope_
+
+m_varyingSlope_ = let
+    varInt = @formula(N_saccades ~ 1 + level_difficulty * drift + input_noise + N_consecutive_crash_success + 
+    zerocorr(1 + ? | ID));
+    fit(MixedModel, varInt, my_data; contrasts=my_cake);
+  end
+
+issingular(m_varyingSlope_) # overparamterized
+#VarCorr(m_varyingSlope_)
+#last(m_varyingSlope_.λ)
+
+```
+
+## Model selection
+Sticking to m_varyingInt1. It seems that no main effect is significant.
+
+## Bootstrapping
+```{julia}
+samples = parametricbootstrap(RNG, N_iterations, m_varyingInt1)
+tbl = samples.tbl
+```
+
+```{julia}
+confint(samples)
+```
+
+Visualizing 95% CIs individually for every covariate.
+```{julia}
+ridgeplot(samples; show_intercept=false, xlabel="Bootstrap density and 95%CI")
+```
+No significant effect found. N_saccades cannot be predicted with the covariates at hand.
+
+
