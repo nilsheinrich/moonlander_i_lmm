@@ -1,3 +1,6 @@
+# Approach taken to random effects structures
+Barr, 2013 "maximal random structure allowed by the design"
+
 # Simple contrast coding
 Defining a grouping variable
 ```{julia}

@@ -158,7 +158,7 @@ m_varyingSlope_complex = let
 
 issingular(m_varyingSlope_complex)  # NOT overparameterized
 ```
-The interaction effect between the two continuous random effects might be overfitting.
+We will compare the complex model with one without the interaction term within the random slope effects.
 
 ```{julia}
 #| label: m_varyingSlope_complex_ni
@@ -195,7 +195,7 @@ gof_summary = let
 end
 
 ```
-Referring to BIC, the model without the interaction term wins. We will therefore proceed with that one.
+Referring to BIC (AIC they are the same), the model without the interaction term wins. We will therefore proceed with that one.
 
 #### Building models of less complexity
 ```{julia}
@@ -409,7 +409,7 @@ plt = data(tbl) * mapping(
 draw(plt; figure=(;supertitle="Parametric bootstrap β estimates of variance components"))
 ```
 
-We see significance only for the **N_visible_obstacles**, meaning this covariate significantly influences saccade amplitude in progressive saccades.
+We see significance only for the **N_visible_obstacles** (negative), meaning this covariate significantly **decreases** saccade amplitude in progressive saccades.
 
 # Exploratory analysis: Modeling saccade landing site distance to spaceship
 

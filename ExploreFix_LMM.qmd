@@ -221,7 +221,7 @@ gof_summary = let
 end
 
 ```
-No correlation between random effects is favored (BIC and AIC agree here). Will proceed with m_varyingSlope_complex_zc...
+No correlation between random effects is favored (by BIC, not by AIC though). Will proceed with m_varyingSlope_complex_zc...
 
 ### Building various models with varying slope of less complexity by throwing out random effects
 
@@ -388,7 +388,7 @@ The ridgeplot will show us the estimates and their distributions (as plotted abo
 ```{julia}
 ridgeplot(samples; show_intercept=false, xlabel="Bootstrap density and 95%CI")
 ```
-We only see a significant effect for **N_visible_obstacles** on fixation duration in exploring fixations. Cannot visually determine significance for the interaction effect, but confint says **NO**
+We only see a significant effect (increase) for **N_visible_obstacles** on fixation duration in exploring fixations.
 
 Zooming in on the interaction effect.
 ```{julia}
@@ -505,7 +505,7 @@ gof_summary = let
   )
 end
 ```
-Close but, zero correlation is not favored by BIC (nor by AIC). Proceeding with m_varyingSlope_complex_ni.
+Close but, zero correlation is not favored by BIC (nor by AIC). Therefore. proceeding with m_varyingSlope_complex_ni.
 
 ### Deleting individual random effects
 
@@ -671,7 +671,7 @@ Calling confint will give you the bounds, when visually it might be hard to veri
 ```{julia}
 confint(samples)
 ```
-N_visible_obstacles, N_visible_drift_tiles, and their interaction term is significant.
+**N_visible_obstacles**, **N_visible_drift_tiles**, and their **interaction** term is significant.
 
 Now let's plot the bounds (without intercept) to visualize when 0 is within the bounds (meaning no significance). It's basically the plot above for the beta estimates but every estimate gets its own row, which makes it easier to read.
 ```{julia}
@@ -686,6 +686,6 @@ plt = data(tbl) * mapping(
   ) * AoG.density()
 draw(plt; figure=(;supertitle="Parametric bootstrap β estimates of variance components"))
 ```
-We also find here no intersection of the 95% CI and x=0 line.
+95% CI is not intersecting with x=0-line.
 
-We find **no** significance for either level of input noise. We however find that N_visible_obstacles, N_visible_drift_tiles, and the interaction of both affect the fixation location (distance to spaceship) in exploring fixations significantly.
+We find **no** significance for either level of input noise. We however find that **N_visible_obstacles** and **N_visible_drift_tiles** are significantly **decreasing** distance to the spaceship within exploring fixations and that the **interaction** of both significantly **increases** the distance to spaceship in exploring fixations. The interaction effect tells us that the effect of N_visible_obstacles depends on the level of N_visible_drift_tiles and vice versa. 

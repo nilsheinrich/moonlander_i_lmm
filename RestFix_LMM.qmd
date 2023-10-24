@@ -301,7 +301,6 @@ VarCorr(m_varyingSlope_complex_zc)
 
 ```
 
-## Principal component analysis
 Due to zerocorr, no valuable information (but for the sake of completion):
 ```{julia}
 
@@ -359,7 +358,7 @@ Now let's plot the bounds (without intercept) to visualize when 0 is within the 
 ```{julia}
 ridgeplot(samples; show_intercept=false, xlabel="Bootstrap density and 95%CI")
 ```
-We see significance only for the interaction effect of N_visible_obstacles abd N_visible_drift_tiles. Input noise or the the individual continuous covariates don't seem to significanty affect the fixation duration in resting fixations.
+We see significance only for **N_visible_drift_tiles**. Input noise, N_visible_obstacles, and the interaction effect don't seem to significanty affect the fixation duration in resting fixations.
 
 Zooming in on the interaction effect.
 ```{julia}
@@ -369,7 +368,7 @@ plt = data(tbl) * mapping(
   ) * AoG.density()
 draw(plt; figure=(;supertitle="Parametric bootstrap β estimates of variance components"))
 ```
-Of the fixed effects included in our model, only N_visible_drift_tiles significantly influences the fixation duration in resting fixations.
+Of the fixed effects included in our model, only **N_visible_drift_tiles** significantly influences (increases) the fixation duration in resting fixations.
 
 # Modeling fixation location
 
@@ -393,6 +392,8 @@ VarCorr(m_varyingInt1)
 
 ```
 Yep. **total_control_loss** has no stated variance. We will therefore ditch it as random effect.
+
+# Modeling fixation location (in terms of distance to spaceship)
 
 ```{julia}
 #| label: m_varyingInt1
