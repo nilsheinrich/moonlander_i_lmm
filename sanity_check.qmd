@@ -79,6 +79,14 @@ my_cake = Dict(
     levels=["N", "W", "S"],
     labels=["weak-none", "strong-weak"],
   ),
+  :level_difficutly => HypothesisCoding(
+    [
+      -1 +1 0
+      0 -1 +1
+    ];
+    levels=["easy", "medium", "hard"],
+    labels=["medium-easy", "hard-medium"],
+  ),
 );
 
 #contrasts = Dict(:input_noise => EffectsCoding())
@@ -99,7 +107,7 @@ VarCorr(m_varyingInt1)
 last(m_varyingInt1.λ)
 
 ```
-Seems like both are viable random effects. Next we will explore random slope effects.
+Seems like ID is a viable random effect. Next we will explore random slope effects.
 
 ### Model of highest complexity
 ```{julia}
@@ -153,26 +161,24 @@ Deleted:
 Entering a single slope effect:
 - level_difficulty
 - input_noise
-do not works,
-
-works:
-- drift
 - N_consecutive_crash_success
-- drift + N_consecutive_crash_success
-
+does not work,
 
 ```{julia}
-#| label: m_varyingSlope_dN
+#| label: m_varyingSlope_
 
-m_varyingSlope_dN = let
+m_varyingSlope_ = let
     varInt = @formula(N_fixations ~ 1 + level_difficulty * drift + input_noise + N_consecutive_crash_success + 
-    zerocorr(1 + drift + N_consecutive_crash_success | ID));
+    (1 + drift | ID));
     fit(MixedModel, varInt, my_data; contrasts=my_cake);
   end
 
-issingular(m_varyingSlope_dN) # NOT overparamterized
+issingular(m_varyingSlope_) # overparamterized
 
 ```
+
+works:
+- drift
 
 ```{julia}
 #| label: m_varyingSlope_d
@@ -187,26 +193,13 @@ issingular(m_varyingSlope_d) # NOT overparamterized
 
 ```
 
-```{julia}
-#| label: m_varyingSlope_N
-
-m_varyingSlope_N = let
-    varInt = @formula(N_fixations ~ 1 + level_difficulty * drift + input_noise + N_consecutive_crash_success + 
-    zerocorr(1 + N_consecutive_crash_success | ID));
-    fit(MixedModel, varInt, my_data; contrasts=my_cake);
-  end
-
-issingular(m_varyingSlope_N) # NOT overparamterized
-
-```
-
-Throwing models against each other:
+Throwing model against only varying intercept model:
 ```{julia}
 
 gof_summary = let
-  nms = [:m_varyingSlope_dN, :m_varyingSlope_N]
+  nms = [:m_varyingInt1, :m_varyingSlope_d]
   mods = eval.(nms)
-  lrt = MixedModels.likelihoodratiotest(m_varyingSlope_dN, m_varyingSlope_N)
+  lrt = MixedModels.likelihoodratiotest(m_varyingInt1, m_varyingSlope_d)
   DataFrame(;
     name = nms, 
     dof=dof.(mods),
@@ -221,40 +214,19 @@ gof_summary = let
 end
 
 ```
-drift and N_consecutive_crash_success as random slope effects win against sole N_consecutive_crash_success.
+Now it gets tricky: referring to BIC m_varyingInt1 wins, but referring to AIC, the model with the drift random slope wins... Going for BIC.
 
-```{julia}
-
-gof_summary = let
-  nms = [:m_varyingSlope_dN, :m_varyingSlope_d]
-  mods = eval.(nms)
-  lrt = MixedModels.likelihoodratiotest(m_varyingSlope_dN, m_varyingSlope_d)
-  DataFrame(;
-    name = nms, 
-    dof=dof.(mods),
-    deviance=round.(deviance.(mods), digits=0),
-    AIC=round.(aic.(mods),digits=0),
-    AICc=round.(aicc.(mods),digits=0),
-    BIC=round.(bic.(mods),digits=0),
-    χ²=vcat(:., round.(lrt.tests.deviancediff, digits=0)),
-    χ²_dof=vcat(:., round.(lrt.tests.dofdiff, digits=0)),
-    pvalue=vcat(:., round.(lrt.tests.pvalues, digits=3))
-  )
-end
-
-```
-drift and N_consecutive_crash_success as random slope effects also win against sole drift. Therefore staying with m_varyingSlope_dN.
 
 ### Model selection
 ```{julia}
 #| label: main_effects
-m_varyingSlope_dN
+m_varyingInt1
 ```
 Nothing reaches significance. Running bootstrap
 
 ## Bootstrapping
 ```{julia}
-samples = parametricbootstrap(RNG, N_iterations, m_varyingSlope_dN)
+samples = parametricbootstrap(RNG, N_iterations, m_varyingInt1)
 tbl = samples.tbl
 ```
 
@@ -296,8 +268,6 @@ m_varyingSlope_complex = let
   end
 
 issingular(m_varyingSlope_complex) # overparamterized
-#VarCorr(m_varyingSlope_complex)
-#last(m_varyingSlope_complex.λ)
 
 ```
 We detect singularity. Proceeding by deleting interaction term within random effects structure.
@@ -312,8 +282,6 @@ m_varyingSlope_complex_ni = let
   end
 
 issingular(m_varyingSlope_complex_ni) # overparamterized
-#VarCorr(m_varyingSlope_complex_ni)
-#last(m_varyingSlope_complex_ni.λ)
 
 ```
 Still overparameterized. Stating zerocorr.
@@ -328,8 +296,6 @@ m_varyingSlope_complex_zc = let
   end
 
 issingular(m_varyingSlope_complex_zc) # overparamterized
-#VarCorr(m_varyingSlope_complex_zc)
-#last(m_varyingSlope_complex_zc.λ)
 
 ```
 Didn't solve it. Proceeding by deleting individual random slope effects.
@@ -359,7 +325,11 @@ issingular(m_varyingSlope_) # overparamterized
 ```
 
 ## Model selection
-Sticking to m_varyingInt1. It seems that no main effect is significant.
+Sticking to m_varyingInt1. 
+```{julia}
+m_varyingInt1
+```
+No main effect is significant.
 
 ## Bootstrapping
 ```{julia}
