@@ -419,3 +419,130 @@ Looks good!
 - N_consecutive_crash_success (0.0187794, 0.0454039)
 - ld: hard * drift (-0.970736, -0.46804)
 - ld: medium * drift (-0.536937, -0.0194473)
+### Frome these findings, we will only report done and will further include this covariate as random effect.
+
+# Including DONE as random effect because we are not interested in variance caused by success
+random effects coding
+```{julia}
+my_cake = Dict(
+  :ID => Grouping(),
+  :done => Grouping(),
+  :input_noise => HypothesisCoding(
+    [
+      -1 +1 0
+      0 -1 +1
+    ];
+    levels=["N", "W", "S"],
+    labels=["weak-none", "strong-weak"],
+  ),
+);
+
+```
+
+only random intercept model
+```{julia}
+#| label: m_varyingInt1
+
+m_varyingInt1 = let
+    varInt = @formula(SoC ~ 1 + level_difficulty * drift + input_noise + N_fixations + N_saccades + N_consecutive_crash_success + 
+    (1 | ID) + 
+    (1 | done));
+    fit(MixedModel, varInt, my_data; contrasts=my_cake);
+  end
+
+issingular(m_varyingInt1) # Not overparamterized
+VarCorr(m_varyingInt1)
+last(m_varyingInt1.λ)
+
+```
+done is suitable for a random effect. Next up, exploring random slopes.
+
+## Exploring random slope effects
+As soon as we entered a random slope effect for done, we detected singularity. We will therefore introduce random slope effects solely for ID.
+```{julia}
+#| label: m_varyingSlope1
+
+m_varyingSlope1 = let
+    varSlop = @formula(SoC ~ 1 + level_difficulty * drift + input_noise + N_fixations + N_saccades + N_consecutive_crash_success + 
+    (1 + drift| ID) + 
+    (1 | done));
+    fit(MixedModel, varSlop, my_data; contrasts=my_cake);
+  end
+
+issingular(m_varyingSlope1) # Not overparamterized
+
+```
+
+```{julia}
+#| label: m_varyingSlope2
+
+m_varyingSlope2 = let
+    varSlop = @formula(SoC ~ 1 + level_difficulty * drift + input_noise + N_fixations + N_saccades + N_consecutive_crash_success + 
+    (1 + N_fixations| ID) + 
+    (1 | done));
+    fit(MixedModel, varSlop, my_data; contrasts=my_cake);
+  end
+
+issingular(m_varyingSlope2) # Not overparamterized
+
+```
+
+```{julia}
+#| label: m_varyingSlope3
+
+m_varyingSlope3 = let
+    varSlop = @formula(SoC ~ 1 + level_difficulty * drift + input_noise + N_fixations + N_saccades + N_consecutive_crash_success + 
+    (1 + N_consecutive_crash_success| ID) + 
+    (1 | done));
+    fit(MixedModel, varSlop, my_data; contrasts=my_cake);
+  end
+
+issingular(m_varyingSlope3) # Not overparamterized
+
+```
+
+Testing models against each other:
+```{julia}
+
+gof_summary = let
+  nms = [:m_varyingInt1, :m_varyingSlope1, :m_varyingSlope2, :m_varyingSlope3]
+  mods = eval.(nms)
+  lrt = MixedModels.likelihoodratiotest(m_varyingInt1, m_varyingSlope1, m_varyingSlope2, m_varyingSlope3)
+  DataFrame(;
+    name = nms, 
+    dof=dof.(mods),
+    deviance=round.(deviance.(mods), digits=0),
+    AIC=round.(aic.(mods),digits=0),
+    AICc=round.(aicc.(mods),digits=0),
+    BIC=round.(bic.(mods),digits=0),
+    χ²=vcat(:., round.(lrt.tests.deviancediff, digits=0)),
+    χ²_dof=vcat(:., round.(lrt.tests.dofdiff, digits=0)),
+    pvalue=vcat(:., round.(lrt.tests.pvalues, digits=3))
+  )
+end
+
+```
+
+m_varyingSlope1 reached lowest BIC (and AIC). We will therefore proceed with drift as random slope effect for ID.
+
+```{julia}
+samples = parametricbootstrap(RNG, N_iterations, m_varyingSlope1)
+tbl = samples.tbl
+```
+
+```{julia}
+confint(samples)
+```
+
+Visualizing 95% CIs individually for every covariate.
+```{julia}
+ridgeplot(samples; show_intercept=false, xlabel="Bootstrap density and 95%CI")
+```
+
+**Discussing the results:** We find significant effects for (stating 95% CIs):
+- level_difficulty: hard (-0.642159, -0.23268), not medium though
+- drift did **not** ultimately reach significance (-0.535484, 0.0266281).
+- input_noise: strong vs. weak (-0.459791, -0.21568), not weak vs. none though
+- N_fixations (0.00043501, 0.00196481), not for N_saccades though
+- N_consecutive_crash_success (0.0123833, 0.0409701)
+- ld: hard * drift (-0.971484, -0.42742), no significance for ld: medium * drift
