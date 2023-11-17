@@ -693,3 +693,191 @@ ridgeplot(samples; show_intercept=false, xlabel="Bootstrap density and 95%CI")
 No significant effect found. N_saccades cannot be predicted with the covariates at hand.
 
 
+# Predicting done (True=success vs. False=crash) with level_difficulty, level length, and input_noise
+
+New data now also with crashs:
+```{julia}
+#| label: data
+
+my_data = DataFrame(Arrow.Table("data/Experiment1_SoCData.arrow"))
+# 1425 rows
+
+# new variable: level_difficulty based on level
+# 1 & 2: easy
+# 3 & 4: medium
+# 5 & 6: hard
+
+
+describe(my_data)
+```
+
+```{julia}
+my_cake = Dict(
+  :ID => Grouping(),
+  :input_noise => HypothesisCoding(
+    [
+      -1 +1 0
+      0 -1 +1
+    ];
+    levels=["N", "W", "S"],
+    labels=["weak-none", "strong-weak"],
+  ),
+  :level_difficutly => HypothesisCoding(
+    [
+      -1 +1 0
+      0 -1 +1
+    ];
+    levels=["easy", "medium", "hard"],
+    labels=["medium-easy", "hard-medium"],
+  ),
+);
+
+```
+
+The predicted varibale **done** is binary. We will therefore define an object *dist* set to the Bernoulli distribution.
+```{julia}
+#| label: binary_outcome_variable
+
+dist = Bernoulli()
+
+```
+
+## Building models
+
+```{julia}
+#| label: m_varyingInt1
+
+m_varyingInt1 = let
+    varInt = @formula(done ~ 1 + level_difficulty * drift + input_noise + (1 | ID));
+    fit(MixedModel, varInt, my_data, dist; contrasts=my_cake);
+  end
+
+issingular(m_varyingInt1) # Not overparamterized
+VarCorr(m_varyingInt1)
+last(m_varyingInt1.λ)
+
+```
+Seems like ID is a viable random effect. Next we will explore random slope effects.
+
+### Exploring random slope effects
+```{julia}
+#| label: m_varyingSlope_complex
+
+m_varyingSlope_complex = let
+    varInt = @formula(done ~ 1 + level_difficulty * drift + input_noise + 
+    (1 + level_difficulty * drift + input_noise | ID));
+    fit(MixedModel, varInt, my_data, dist; contrasts=my_cake);
+  end
+
+issingular(m_varyingSlope_complex) # overparamterized
+
+```
+
+Deleting the interaction term.
+```{julia}
+#| label: m_varyingSlope_complex_ni
+
+m_varyingSlope_complex_ni = let
+    varInt = @formula(done ~ 1 + level_difficulty * drift + input_noise + 
+    (1 + level_difficulty + drift + input_noise | ID));
+    fit(MixedModel, varInt, my_data, dist; contrasts=my_cake);
+  end
+
+issingular(m_varyingSlope_complex_ni) # overparamterized
+
+```
+
+Going to get rid of correlations between random slopes.
+```{julia}
+#| label: m_varyingSlope_complex_zc
+
+m_varyingSlope_complex_zc = let
+    varInt = @formula(done ~ 1 + level_difficulty * drift + input_noise + 
+    zerocorr(1 + level_difficulty + drift + input_noise | ID));
+    fit(MixedModel, varInt, my_data, dist; contrasts=my_cake);
+  end
+
+issingular(m_varyingSlope_complex_zc) # overparamterized
+
+```
+
+#### Starting to delete individual random slopes
+
+Deleting drift...
+```{julia}
+#| label: m_varyingSlope1
+
+m_varyingSlope1 = let
+    varInt = @formula(done ~ 1 + level_difficulty * drift + input_noise + 
+    zerocorr(1 + level_difficulty + input_noise | ID));
+    fit(MixedModel, varInt, my_data, dist; contrasts=my_cake);
+  end
+
+issingular(m_varyingSlope1) # overparamterized
+
+```
+
+Deleting input_noise instead...
+```{julia}
+#| label: m_varyingSlope2
+
+m_varyingSlope2 = let
+    varInt = @formula(done ~ 1 + level_difficulty * drift + input_noise + 
+    zerocorr(1 + level_difficulty + drift | ID));
+    fit(MixedModel, varInt, my_data, dist; contrasts=my_cake);
+  end
+
+issingular(m_varyingSlope2) # overparamterized
+
+```
+
+Instead deleting level_difficulty...
+```{julia}
+#| label: m_varyingSlope3
+
+m_varyingSlope3 = let
+    varInt = @formula(done ~ 1 + level_difficulty * drift + input_noise + 
+    zerocorr(1 + drift + input_noise | ID));
+    fit(MixedModel, varInt, my_data, dist; contrasts=my_cake);
+  end
+
+issingular(m_varyingSlope3) # overparamterized
+
+```
+
+No way keeping two of the factors as random slopes. We will try including only a single random slope.
+
+```{julia}
+#| label: m_varyingSlope_
+
+m_varyingSlope_ = let
+    varInt = @formula(done ~ 1 + level_difficulty * drift + input_noise + 
+    zerocorr(1 + drift | ID));
+    fit(MixedModel, varInt, my_data, dist; contrasts=my_cake);
+  end
+
+issingular(m_varyingSlope_) # overparamterized
+
+```
+Including only a single random slope always results in singularity. Proceeding with the only random intercept model, m_varyingInt1.
+
+```{julia}
+VarCorr(m_varyingInt1)
+```
+There is no residual variance estimated: this is because the Bernoulli distribution doesn't have a scale parameter.
+
+```{julia}
+m_varyingInt1
+```
+
+```{julia}
+using Effects
+
+levels = Dict(
+  :level_difficulty => ["easy", "medium", "hard"], :drift => ["false", "true"], :input_noise => ["N", "W", "S"]
+)
+
+preds = effects(levels, m_varyingInt1; invlink=AutoInvLink())
+```
+**Discussing the results:**
+
