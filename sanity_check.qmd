@@ -873,11 +873,17 @@ m_varyingInt1
 ```{julia}
 using Effects
 
-levels = Dict(
-  :level_difficulty => ["easy", "medium", "hard"], :drift => ["false", "true"], :input_noise => ["N", "W", "S"]
+# first filter data that cannot be predicted by model (missing cases)
+filter!(!ismissing, [my_data.level_difficulty, my_data.drift, my_data.input_noise])
+
+# specify levels of covariates for which we want predictions
+covariate_levels = Dict(
+  :level_difficulty => ["easy", "medium", "hard"], 
+  :drift => ["false", "true"], 
+  :input_noise => ["N", "W", "S"]
 )
 
-preds = effects(levels, m_varyingInt1; invlink=AutoInvLink())
+# generate predictions
+preds = effects(covariate_levels, m_varyingInt1; invlink=AutoInvLink())
 ```
 **Discussing the results:**
-

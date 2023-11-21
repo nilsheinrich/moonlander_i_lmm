@@ -378,7 +378,7 @@ draw(plt; figure=(;supertitle="Parametric bootstrap β estimates of variance com
 ```
 95% CI does not cross the x=0 (confint). => Significance
 
-We see significance only for the **N_visible_obstacles** and the interaction effect **N_visible_obstacles*N_visible_drift_tiles** (confint), meaning these covariates significantly influence saccade amplitude in regressive saccades.
+We see significance only for the **N_visible_obstacles** (-0.0757759, -0.0372465) and the interaction effect **N_visible_obstacles*N_visible_drift_tiles** (0.000741297, 0.0313547) meaning these covariates significantly influence saccade amplitude in regressive saccades.
 
 # Exploratory analysis: Modeling saccade landing site distance to spaceship
 
