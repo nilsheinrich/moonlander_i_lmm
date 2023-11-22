@@ -113,8 +113,8 @@ Varying intercepts for **ID** and **total_control_loss**:
 #| label: m_varyingInt1
 
 m_varyingInt1 = let
-    varInt = @formula(log(saccade_amplitude) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + (1 | ID) + (1 | total_control_loss));
-    fit(MixedModel, varInt, my_data; contrasts=my_cake);
+    formula = @formula(log(saccade_amplitude) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + (1 | ID) + (1 | total_control_loss));
+    fit(MixedModel, formula, my_data; contrasts=my_cake);
   end
 
 issingular(m_varyingInt1) # singular
@@ -135,8 +135,8 @@ Yep. Neglecting total_control_loss from here on.
 #| label: m_varyingInt2
 
 m_varyingInt2 = let
-    varInt = @formula(log(saccade_amplitude) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + (1 | ID));
-    fit(MixedModel, varInt, my_data; contrasts=my_cake);
+    formula = @formula(log(saccade_amplitude) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + (1 | ID));
+    fit(MixedModel, formula, my_data; contrasts=my_cake);
   end
 
 issingular(m_varyingInt2)
@@ -152,8 +152,8 @@ We start by building the most complex random effects structure around ID (just d
 #| label: m_varyingSlope_complex
 
 m_varyingSlope_complex = let
-    varSlop = @formula(log(saccade_amplitude) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + (1 + N_visible_obstacles * N_visible_drift_tiles + input_noise | ID));
-    fit(MixedModel, varSlop, my_data; contrasts=my_cake);
+    formula = @formula(log(saccade_amplitude) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + (1 + N_visible_obstacles * N_visible_drift_tiles + input_noise | ID));
+    fit(MixedModel, formula, my_data; contrasts=my_cake);
   end
 
 issingular(m_varyingSlope_complex)  # NOT overparameterized
@@ -164,8 +164,8 @@ We will compare the complex model with one without the interaction term within t
 #| label: m_varyingSlope_complex_ni
 
 m_varyingSlope_complex_ni = let
-    varSlop = @formula(log(saccade_amplitude) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + (1 + N_visible_obstacles + N_visible_drift_tiles + input_noise | ID));
-    fit(MixedModel, varSlop, my_data; contrasts=my_cake);
+    formula = @formula(log(saccade_amplitude) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + (1 + N_visible_obstacles + N_visible_drift_tiles + input_noise | ID));
+    fit(MixedModel, formula, my_data; contrasts=my_cake);
   end
 
 issingular(m_varyingSlope_complex_ni)
@@ -202,8 +202,8 @@ Referring to BIC (AIC they are the same), the model without the interaction term
 #| label: m_varyingSlope_complex_zc
 
 m_varyingSlope_complex_zc = let
-    varSlop = @formula(log(saccade_amplitude) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + zerocorr(1 + N_visible_obstacles + N_visible_drift_tiles + input_noise | ID));
-    fit(MixedModel, varSlop, my_data; contrasts=my_cake);
+    formula = @formula(log(saccade_amplitude) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + zerocorr(1 + N_visible_obstacles + N_visible_drift_tiles + input_noise | ID));
+    fit(MixedModel, formula, my_data; contrasts=my_cake);
   end
 
 issingular(m_varyingSlope_complex_zc)
@@ -241,8 +241,8 @@ Throwing input noise out of the random effects structure.
 #| label: m_varyingSlope1
 
 m_varyingSlope1 = let
-    varSlop = @formula(log(saccade_amplitude) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + zerocorr(1 + N_visible_obstacles + N_visible_drift_tiles | ID));
-    fit(MixedModel, varSlop, my_data; contrasts=my_cake);
+    formula = @formula(log(saccade_amplitude) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + zerocorr(1 + N_visible_obstacles + N_visible_drift_tiles | ID));
+    fit(MixedModel, formula, my_data; contrasts=my_cake);
   end
 
 issingular(m_varyingSlope1)
@@ -276,8 +276,8 @@ Throwing out N_visible_obstacles:
 #| label: m_varyingSlope2
 
 m_varyingSlope2 = let
-    varSlop = @formula(log(saccade_amplitude) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + zerocorr(1 + N_visible_drift_tiles + input_noise | ID));
-    fit(MixedModel, varSlop, my_data; contrasts=my_cake);
+    formula = @formula(log(saccade_amplitude) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + zerocorr(1 + N_visible_drift_tiles + input_noise | ID));
+    fit(MixedModel, formula, my_data; contrasts=my_cake);
   end
 
 issingular(m_varyingSlope2)
@@ -312,8 +312,8 @@ Kicking out N_visible_drift_tiles:
 #| label: m_varyingSlope3
 
 m_varyingSlope3 = let
-    varSlop = @formula(log(saccade_amplitude) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + zerocorr(1 + N_visible_obstacles + input_noise | ID));
-    fit(MixedModel, varSlop, my_data; contrasts=my_cake);
+    formula = @formula(log(saccade_amplitude) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + zerocorr(1 + N_visible_obstacles + input_noise | ID));
+    fit(MixedModel, formula, my_data; contrasts=my_cake);
   end
 
 issingular(m_varyingSlope3)
@@ -420,8 +420,8 @@ Including both, ID and total_control_loss as random intercept effect.
 #| label: m_varyingInt1
 
 m_varyingInt1 = let
-    varInt = @formula(saccLandSite_dist_to_spaceship ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + (1 | ID) + (1 | total_control_loss));
-    fit(MixedModel, varInt, my_data; contrasts=my_cake);
+    formula = @formula(saccLandSite_dist_to_spaceship ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + (1 | ID) + (1 | total_control_loss));
+    fit(MixedModel, formula, my_data; contrasts=my_cake);
   end
 
 issingular(m_varyingInt1)
@@ -442,8 +442,8 @@ Leaving out total_control_loss
 #| label: m_varyingInt1
 
 m_varyingInt1 = let
-    varInt = @formula(saccLandSite_dist_to_spaceship ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + (1 | ID));
-    fit(MixedModel, varInt, my_data; contrasts=my_cake);
+    formula = @formula(saccLandSite_dist_to_spaceship ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + (1 | ID));
+    fit(MixedModel, formula, my_data; contrasts=my_cake);
   end
 
 issingular(m_varyingInt1)
@@ -459,8 +459,8 @@ Building the most complex model:
 #| label: m_varyingSlope_complex
 
 m_varyingSlope_complex = let
-    varSlope = @formula(saccLandSite_dist_to_spaceship ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + (1 + N_visible_obstacles * N_visible_drift_tiles + input_noise | ID));
-    fit(MixedModel, varSlope, my_data; contrasts=my_cake);
+    formula = @formula(saccLandSite_dist_to_spaceship ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + (1 + N_visible_obstacles * N_visible_drift_tiles + input_noise | ID));
+    fit(MixedModel, formula, my_data; contrasts=my_cake);
   end
 
 issingular(m_varyingSlope_complex)
@@ -476,8 +476,8 @@ Ditching interaction term within random effects structure
 #| label: m_varyingSlope_complex_ni
 
 m_varyingSlope_complex_ni = let
-    varSlope = @formula(saccLandSite_dist_to_spaceship ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + (1 + N_visible_obstacles + N_visible_drift_tiles + input_noise | ID));
-    fit(MixedModel, varSlope, my_data; contrasts=my_cake);
+    formula = @formula(saccLandSite_dist_to_spaceship ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + (1 + N_visible_obstacles + N_visible_drift_tiles + input_noise | ID));
+    fit(MixedModel, formula, my_data; contrasts=my_cake);
   end
 
 issingular(m_varyingSlope_complex_ni)
@@ -513,8 +513,8 @@ Not allowing correlation between random effects.
 #| label: m_varyingSlope_zc
 
 m_varyingSlope_zc = let
-    varSlope = @formula(saccLandSite_dist_to_spaceship ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + zerocorr(1 + N_visible_obstacles + N_visible_drift_tiles + input_noise | ID));
-    fit(MixedModel, varSlope, my_data; contrasts=my_cake);
+    formula = @formula(saccLandSite_dist_to_spaceship ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + zerocorr(1 + N_visible_obstacles + N_visible_drift_tiles + input_noise | ID));
+    fit(MixedModel, formula, my_data; contrasts=my_cake);
   end
 
 issingular(m_varyingSlope_zc)
@@ -550,8 +550,8 @@ Leaving out input noise
 #| label: m_varyingSlope1
 
 m_varyingSlope1 = let
-    varSlope = @formula(saccLandSite_dist_to_spaceship ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + zerocorr(1 + N_visible_obstacles + N_visible_drift_tiles | ID));
-    fit(MixedModel, varSlope, my_data; contrasts=my_cake);
+    formula = @formula(saccLandSite_dist_to_spaceship ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + zerocorr(1 + N_visible_obstacles + N_visible_drift_tiles | ID));
+    fit(MixedModel, formula, my_data; contrasts=my_cake);
   end
 
 issingular(m_varyingSlope1)
@@ -587,8 +587,8 @@ Leaving out N_visible_obstacles
 #| label: m_varyingSlope2
 
 m_varyingSlope2 = let
-    varSlope = @formula(saccLandSite_dist_to_spaceship ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + zerocorr(1 + N_visible_drift_tiles + input_noise | ID));
-    fit(MixedModel, varSlope, my_data; contrasts=my_cake);
+    formula = @formula(saccLandSite_dist_to_spaceship ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + zerocorr(1 + N_visible_drift_tiles + input_noise | ID));
+    fit(MixedModel, formula, my_data; contrasts=my_cake);
   end
 
 issingular(m_varyingSlope2)
@@ -624,8 +624,8 @@ Leaving out N_visible_drift_tiles instead.
 #| label: m_varyingSlope3
 
 m_varyingSlope3 = let
-    varSlope = @formula(saccLandSite_dist_to_spaceship ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + zerocorr(1 + N_visible_obstacles + input_noise | ID));
-    fit(MixedModel, varSlope, my_data; contrasts=my_cake);
+    formula = @formula(saccLandSite_dist_to_spaceship ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + zerocorr(1 + N_visible_obstacles + input_noise | ID));
+    fit(MixedModel, formula, my_data; contrasts=my_cake);
   end
 
 issingular(m_varyingSlope3)
@@ -728,10 +728,10 @@ Including both, ID and total_control_loss as random intercept effect.
 #| label: m_varyingInt1
 
 m_varyingInt1 = let
-    varInt = @formula(saccLandSite_dist_to_closestObstacle ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + 
+    formula = @formula(saccLandSite_dist_to_closestObstacle ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + 
     (1 | ID) + 
     (1 | total_control_loss));
-    fit(MixedModel, varInt, my_data; contrasts=my_cake);
+    fit(MixedModel, formula, my_data; contrasts=my_cake);
   end
 
 issingular(m_varyingInt1) # NOT overparameterized
@@ -752,9 +752,9 @@ Simply dumping the fixed effects structure into the random slopes.
 #| label: m_varyingSlope_complex
 
 m_varyingSlope_complex = let
-    varInt = @formula(saccLandSite_dist_to_closestObstacle ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + 
+    formula = @formula(saccLandSite_dist_to_closestObstacle ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + 
     (1 + N_visible_obstacles * N_visible_drift_tiles + input_noise | ID));
-    fit(MixedModel, varInt, my_data; contrasts=my_cake);
+    fit(MixedModel, formula, my_data; contrasts=my_cake);
   end
 
 issingular(m_varyingSlope_complex) # overparameterized
@@ -767,9 +767,9 @@ Starting with the interaction term within the random slopes:
 #| label: m_varyingSlope_ni
 
 m_varyingSlope_ni = let
-    varInt = @formula(saccLandSite_dist_to_closestObstacle ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + 
+    formula = @formula(saccLandSite_dist_to_closestObstacle ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + 
     (1 + N_visible_obstacles + N_visible_drift_tiles + input_noise | ID));
-    fit(MixedModel, varInt, my_data; contrasts=my_cake);
+    fit(MixedModel, formula, my_data; contrasts=my_cake);
   end
 
 issingular(m_varyingSlope_ni) # NOT overparameterized
@@ -781,9 +781,9 @@ That worked. This is our most complex model. Proceeding from here.
 #| label: m_varyingSlope_zc
 
 m_varyingSlope_zc = let
-    varInt = @formula(saccLandSite_dist_to_closestObstacle ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + 
+    formula = @formula(saccLandSite_dist_to_closestObstacle ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + 
     zerocorr(1 + N_visible_obstacles + N_visible_drift_tiles + input_noise | ID));
-    fit(MixedModel, varInt, my_data; contrasts=my_cake);
+    fit(MixedModel, formula, my_data; contrasts=my_cake);
   end
 
 issingular(m_varyingSlope_zc) # NOT overparameterized
@@ -817,9 +817,9 @@ Deleting input_noise
 #| label: m_varyingSlope1
 
 m_varyingSlope1 = let
-    varInt = @formula(saccLandSite_dist_to_closestObstacle ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + 
+    formula = @formula(saccLandSite_dist_to_closestObstacle ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + 
     (1 + N_visible_obstacles + N_visible_drift_tiles | ID));
-    fit(MixedModel, varInt, my_data; contrasts=my_cake);
+    fit(MixedModel, formula, my_data; contrasts=my_cake);
   end
 
 issingular(m_varyingSlope1) # NOT overparameterized
@@ -853,9 +853,9 @@ Deleting N_visible_obstacles
 #| label: m_varyingSlope2
 
 m_varyingSlope2 = let
-    varInt = @formula(saccLandSite_dist_to_closestObstacle ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + 
+    formula = @formula(saccLandSite_dist_to_closestObstacle ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + 
     (1 + N_visible_drift_tiles + input_noise | ID));
-    fit(MixedModel, varInt, my_data; contrasts=my_cake);
+    fit(MixedModel, formula, my_data; contrasts=my_cake);
   end
 
 issingular(m_varyingSlope2) # NOT overparameterized
@@ -889,9 +889,9 @@ Deleting N_visible_drift_tiles instead...
 #| label: m_varyingSlope3
 
 m_varyingSlope3 = let
-    varInt = @formula(saccLandSite_dist_to_closestObstacle ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + 
+    formula = @formula(saccLandSite_dist_to_closestObstacle ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + 
     (1 + N_visible_obstacles + input_noise | ID));
-    fit(MixedModel, varInt, my_data; contrasts=my_cake);
+    fit(MixedModel, formula, my_data; contrasts=my_cake);
   end
 
 issingular(m_varyingSlope3) # NOT overparameterized

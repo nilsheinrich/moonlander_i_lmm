@@ -887,3 +887,10 @@ covariate_levels = Dict(
 preds = effects(covariate_levels, m_varyingInt1; invlink=AutoInvLink())
 ```
 **Discussing the results:**
+significant effects for:
+- level_difficulty: hard (-3.63577, p<.00)
+- level_difficulty: medium (-2.17203, p=0.0007)
+- input_noise: strong-weak (-0.83504, p<.00)
+- level_difficulty: hard & drift (-2.59284, p=0.0016)
+
+
