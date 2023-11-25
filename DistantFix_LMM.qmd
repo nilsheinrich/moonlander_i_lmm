@@ -386,9 +386,9 @@ confint(samples)
 
 The ridgeplot will show us the estimates and their distributions (as plotted above). We will omit the intercept because it would zoom out too much.
 ```{julia}
-ridgeplot(samples; show_intercept=false, xlabel="Bootstrap density and 95%CI")
+ridgeplot(samples; show_intercept=false, xlabel="Bootstrap density and 95%CI", title="Fixation duration (distant fixations)")
 ```
-We only see a significant effect (increase) for **N_visible_obstacles** on fixation duration in exploring fixations.
+We only see a significant effect (increase) for **N_visible_obstacles** on fixation duration in distant fixations.
 
 Zooming in on the interaction effect.
 ```{julia}
@@ -675,7 +675,7 @@ confint(samples)
 
 Now let's plot the bounds (without intercept) to visualize when 0 is within the bounds (meaning no significance). It's basically the plot above for the beta estimates but every estimate gets its own row, which makes it easier to read.
 ```{julia}
-ridgeplot(samples; show_intercept=false, xlabel="Bootstrap density and 95%CI")
+ridgeplot(samples; show_intercept=false, xlabel="Bootstrap density and 95%CI", title="Distance to agent (distant fixations)")
 ```
 
 Zooming in on the interaction effect:

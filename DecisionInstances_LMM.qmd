@@ -1,0 +1,79 @@
+---
+title: "Nils Wendel Heinrich: Decision Instances"
+subtitle: "Moonlander I - Analysis"
+author: "Nils Wendel Heinrich"
+date: "2023-11-14"
+format:
+  html:
+    embed-resources: true
+    toc: true
+    toc-depth: 2
+    code-fold: false
+    number-sections: true
+    fig-width: 8
+    fig-height: 6
+editor_options:
+  chunk_output_type: console
+jupyter: julia-1.9
+---
+
+# Description
+
+# Setup
+
+## Packages
+
+```{julia}
+#| label: packages
+
+using Arrow
+using AlgebraOfGraphics
+using CairoMakie
+using DataFrames
+using DataFrameMacros
+using MixedModels
+using MixedModelsMakie
+using Random
+#using RCall
+
+CairoMakie.activate!(; type="svg");
+```
+
+```{julia}
+#| label: constants
+const RNG = MersenneTwister(36)
+N_iterations = 10000
+```
+
+```{julia}
+const AoG = AlgebraOfGraphics;
+```
+
+```{julia}
+#| label: data
+
+my_data = DataFrame(Arrow.Table("data/Experiment1_decisionInstances.arrow"))
+#my_data = dropmissing(my_data, [:N_visible_obstacles, :N_visible_drift_tiles])
+
+describe(my_data)
+```
+
+### Contrasts
+
+We will declare **ID** as a grouping variable as well as define the effects coding for the discrete covariate input noise.
+
+#### Hypothesis Coding
+```{julia}
+my_cake = Dict(
+  :ID => Grouping(),
+  :total_control_loss => Grouping(),
+  :input_noise => HypothesisCoding(
+    [
+      -1 +1 0
+      0 -1 +1
+    ];
+    levels=["N", "W", "S"],
+    labels=["weak-none", "strong-weak"],
+  ),
+);
+```

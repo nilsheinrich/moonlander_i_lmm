@@ -165,8 +165,8 @@ m_varyingSlope_complex_zc = let
   end
 
 issingular(m_varyingSlope_complex_zc)  # NOT overparameterized
-VarCorr(m_varyingSlope_complex_zc) # no zeroes in Variance or Std.Dev.
-last(m_varyingSlope_complex_zc.λ) # no zeroes on diagonal
+#VarCorr(m_varyingSlope_complex_zc) # no zeroes in Variance or Std.Dev.
+#last(m_varyingSlope_complex_zc.λ) # no zeroes on diagonal
 ```
 
 ```{julia}
@@ -347,6 +347,6 @@ confint(samples)
 
 Visualizing 95% CIs individually for every covariate.
 ```{julia}
-ridgeplot(samples; show_intercept=false, xlabel="Bootstrap density and 95%CI")
+ridgeplot(samples; show_intercept=false, xlabel="Bootstrap density and 95%CI", title="Input duration")
 ```
-We detect significant effects for **N_visible_obstcales**, **N_visible_drift_tiles**, and their **interaction** effect. The CIs show no evidence for either level of input_noise significantly affectling input duration.
+We detect significant effects for **N_visible_obstcales**, **N_visible_drift_tiles**, and their **interaction** effect. The CIs show no evidence for either level of input_noise significantly affecting input duration.

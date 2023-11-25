@@ -397,7 +397,7 @@ confint(samples)
 
 Visualizing 95% CIs individually for every covariate.
 ```{julia}
-ridgeplot(samples; show_intercept=false, xlabel="Bootstrap density and 95%CI")
+ridgeplot(samples; show_intercept=false, xlabel="Bootstrap density and 95%CI", title="Saccade amplitude (progressive saccades)")
 ```
 
 Zooming in on the interaction effect.
@@ -705,7 +705,7 @@ confint(samples)
 
 Native ridgeplot
 ```{julia}
-ridgeplot(samples; show_intercept=false, xlabel="Bootstrap density and 95%CI")
+ridgeplot(samples; show_intercept=false, xlabel="Bootstrap density and 95%CI", title="Distance to agent (progressive saccades)")
 ```
 
 Zooming in on the interaction effect.

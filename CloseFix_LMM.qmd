@@ -356,7 +356,7 @@ confint(samples)
 
 Now let's plot the bounds (without intercept) to visualize when 0 is within the bounds (meaning no significance). It's basically the plot above for the beta estimates but every estimate gets its own row, which makes it easier to read.
 ```{julia}
-ridgeplot(samples; show_intercept=false, xlabel="Bootstrap density and 95%CI")
+ridgeplot(samples; show_intercept=false, xlabel="Bootstrap density and 95%CI", title="Fixation duration (close fixations)")
 ```
 We see significance only for **N_visible_drift_tiles**. Input noise, N_visible_obstacles, and the interaction effect don't seem to significanty affect the fixation duration in resting fixations.
 
@@ -641,7 +641,7 @@ confint(samples)
 
 The ridgeplot will show us the estimates and their distributions (as plotted above). We will omit the intercept because it would zoom out too much.
 ```{julia}
-ridgeplot(samples; show_intercept=false, xlabel="Bootstrap density and 95%CI")
+ridgeplot(samples; show_intercept=false, xlabel="Bootstrap density and 95%CI", title="Distance to agent (close fixations)")
 ```
 
 Zooming in on the interaction effect

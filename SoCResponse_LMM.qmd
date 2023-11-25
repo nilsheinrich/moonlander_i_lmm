@@ -171,36 +171,37 @@ input_noise + N_fixations + N_saccades + N_consecutive_crash_success
 level_difficulty + input_noise + N_fixations + N_saccades + N_consecutive_crash_success (worked)
 
 ```{julia}
-#| label: m_varyingSlope_complex_zc
+#| label: m_varyingSlope_zc
 
-m_varyingSlope_complex_zc = let
+m_varyingSlope_zc = let
     varSlope = @formula(SoC ~ 1 + done + level_difficulty * drift + input_noise + N_fixations + N_saccades + N_consecutive_crash_success + zerocorr(1 + done + drift | ID));
     fit(MixedModel, varSlope, my_data; contrasts=my_cake);
   end
 
-issingular(m_varyingSlope_complex_zc) # NOT overparamterized
+issingular(m_varyingSlope_zc) # NOT overparamterized
 ```
 
 ### Further exploring random effects structure
 
 Deleting drift as well:
 ```{julia}
-#| label: m_varyingSlope_complex_zc_done
+#| label: m_varyingSlope_zc_done
 
-m_varyingSlope_complex_zc_done = let
-    varSlope = @formula(SoC ~ 1 + done + level_difficulty * drift + input_noise + N_fixations + N_saccades + N_consecutive_crash_success + zerocorr(1 + done | ID));
+m_varyingSlope_zc_done = let
+    varSlope = @formula(SoC ~ 1 + done + level_difficulty * drift + input_noise + N_fixations + N_saccades + N_consecutive_crash_success + 
+    zerocorr(1 + done | ID));
     fit(MixedModel, varSlope, my_data; contrasts=my_cake);
   end
 
-issingular(m_varyingSlope_complex_zc_done) # NOT overparamterized
+issingular(m_varyingSlope_zc_done) # NOT overparamterized
 ```
 
 ```{julia}
 
 gof_summary = let
-  nms = [:m_varyingSlope_complex_zc, :m_varyingSlope_complex_zc_done]
+  nms = [:m_varyingSlope_zc, :m_varyingSlope_zc_done]
   mods = eval.(nms)
-  lrt = MixedModels.likelihoodratiotest(m_varyingSlope_complex_zc, m_varyingSlope_complex_zc_done)
+  lrt = MixedModels.likelihoodratiotest(m_varyingSlope_zc, m_varyingSlope_zc_done)
   DataFrame(;
     name = nms, 
     dof=dof.(mods),
@@ -219,22 +220,23 @@ Deleting drift as random slope effect results in a higher BIC (and AIC).
 
 Deleting done instead:
 ```{julia}
-#| label: m_varyingSlope_complex_zc_drift
+#| label: m_varyingSlope_zc_drift
 
-m_varyingSlope_complex_zc_drift = let
-    varSlope = @formula(SoC ~ 1 + done + level_difficulty * drift + input_noise + N_fixations + N_saccades + N_consecutive_crash_success + zerocorr(1 + drift | ID));
+m_varyingSlope_zc_drift = let
+    varSlope = @formula(SoC ~ 1 + done + level_difficulty * drift + input_noise + N_fixations + N_saccades + N_consecutive_crash_success + 
+    zerocorr(1 + drift | ID));
     fit(MixedModel, varSlope, my_data; contrasts=my_cake);
   end
 
-issingular(m_varyingSlope_complex_zc_drift) # NOT overparamterized
+issingular(m_varyingSlope_zc_drift) # NOT overparamterized
 ```
 
 ```{julia}
 
 gof_summary = let
-  nms = [:m_varyingSlope_complex_zc, :m_varyingSlope_complex_zc_drift]
+  nms = [:m_varyingSlope_zc, :m_varyingSlope_zc_drift]
   mods = eval.(nms)
-  lrt = MixedModels.likelihoodratiotest(m_varyingSlope_complex_zc, m_varyingSlope_complex_zc_drift)
+  lrt = MixedModels.likelihoodratiotest(m_varyingSlope_zc, m_varyingSlope_zc_drift)
   DataFrame(;
     name = nms, 
     dof=dof.(mods),
@@ -254,67 +256,67 @@ Drift and done as random slope effects is favoured against only drift (by BIC an
 #### Testing against other single random slope effects
 
 ```{julia}
-#| label: m_varyingSlope_complex_zc_input_noise
+#| label: m_varyingSlope_zc_input_noise
 
-m_varyingSlope_complex_zc_input_noise = let
+m_varyingSlope_zc_input_noise = let
     varSlope = @formula(SoC ~ 1 + done + level_difficulty * drift + input_noise + N_fixations + N_saccades + N_consecutive_crash_success + zerocorr(1 + input_noise | ID));
     fit(MixedModel, varSlope, my_data; contrasts=my_cake);
   end
 
-issingular(m_varyingSlope_complex_zc_input_noise) # singularity
+issingular(m_varyingSlope_zc_input_noise) # singularity
 ```
 
 ```{julia}
-#| label: m_varyingSlope_complex_zc_ld
+#| label: m_varyingSlope_zc_ld
 
-m_varyingSlope_complex_zc_ld = let
+m_varyingSlope_zc_ld = let
     varSlope = @formula(SoC ~ 1 + done + level_difficulty * drift + input_noise + N_fixations + N_saccades + N_consecutive_crash_success + zerocorr(1 + level_difficulty | ID));
     fit(MixedModel, varSlope, my_data; contrasts=my_cake);
   end
 
-issingular(m_varyingSlope_complex_zc_ld) # singularity
+issingular(m_varyingSlope_zc_ld) # singularity
 ```
 
 ```{julia}
-#| label: m_varyingSlope_complex_zc_Nfix
+#| label: m_varyingSlope_zc_Nfix
 
-m_varyingSlope_complex_zc_Nfix = let
+m_varyingSlope_zc_Nfix = let
     varSlope = @formula(SoC ~ 1 + done + level_difficulty * drift + input_noise + N_fixations + N_saccades + N_consecutive_crash_success + zerocorr(1 + N_fixations | ID));
     fit(MixedModel, varSlope, my_data; contrasts=my_cake);
   end
 
-issingular(m_varyingSlope_complex_zc_Nfix) # NO singularity
+issingular(m_varyingSlope_zc_Nfix) # NO singularity
 ```
 
 ```{julia}
-#| label: m_varyingSlope_complex_zc_Nsacc
+#| label: m_varyingSlope_zc_Nsacc
 
-m_varyingSlope_complex_zc_Nsacc = let
+m_varyingSlope_zc_Nsacc = let
     varSlope = @formula(SoC ~ 1 + done + level_difficulty * drift + input_noise + N_fixations + N_saccades + N_consecutive_crash_success + zerocorr(1 + N_saccades | ID));
     fit(MixedModel, varSlope, my_data; contrasts=my_cake);
   end
 
-issingular(m_varyingSlope_complex_zc_Nsacc) # singularity
+issingular(m_varyingSlope_zc_Nsacc) # singularity
 ```
 
 ```{julia}
-#| label: m_varyingSlope_complex_zc_ccs
+#| label: m_varyingSlope_zc_ccs
 
-m_varyingSlope_complex_zc_ccs = let
+m_varyingSlope_zc_ccs = let
     varSlope = @formula(SoC ~ 1 + done + level_difficulty * drift + input_noise + N_fixations + N_saccades + N_consecutive_crash_success + zerocorr(1 + N_consecutive_crash_success | ID));
     fit(MixedModel, varSlope, my_data; contrasts=my_cake);
   end
 
-issingular(m_varyingSlope_complex_zc_ccs) # NO singularity
+issingular(m_varyingSlope_zc_ccs) # NO singularity
 ```
 
 Throwing viable models against each other.
 ```{julia}
 
 gof_summary = let
-  nms = [:m_varyingSlope_complex_zc, :m_varyingSlope_complex_zc_ccs]
+  nms = [:m_varyingSlope_zc, :m_varyingSlope_zc_ccs]
   mods = eval.(nms)
-  lrt = MixedModels.likelihoodratiotest(m_varyingSlope_complex_zc, m_varyingSlope_complex_zc_ccs)
+  lrt = MixedModels.likelihoodratiotest(m_varyingSlope_zc, m_varyingSlope_zc_ccs)
   DataFrame(;
     name = nms, 
     dof=dof.(mods),
@@ -334,9 +336,9 @@ Only N_consecutive_crash_success as random slope looses against done+drift.
 ```{julia}
 
 gof_summary = let
-  nms = [:m_varyingSlope_complex_zc, :m_varyingSlope_complex_zc_Nfix]
+  nms = [:m_varyingSlope_zc, :m_varyingSlope_zc_Nfix]
   mods = eval.(nms)
-  lrt = MixedModels.likelihoodratiotest(m_varyingSlope_complex_zc, m_varyingSlope_complex_zc_Nfix)
+  lrt = MixedModels.likelihoodratiotest(m_varyingSlope_zc, m_varyingSlope_zc_Nfix)
   DataFrame(;
     name = nms, 
     dof=dof.(mods),
@@ -355,7 +357,7 @@ Again done+drift reaches smaller BIC and AIC.
 
 ## Bootstrapping
 ```{julia}
-samples = parametricbootstrap(RNG, N_iterations, m_varyingSlope_complex_zc)
+samples = parametricbootstrap(RNG, N_iterations, m_varyingSlope_zc)
 tbl = samples.tbl
 ```
 
@@ -365,7 +367,7 @@ confint(samples)
 
 Visualizing 95% CIs individually for every covariate.
 ```{julia}
-ridgeplot(samples; show_intercept=false, xlabel="Bootstrap density and 95%CI")
+ridgeplot(samples; show_intercept=false, xlabel="Bootstrap density and 95%CI", title="SoC judgements")
 ```
 
 #### Zooming in on individual PDFs
@@ -536,7 +538,7 @@ confint(samples)
 
 Visualizing 95% CIs individually for every covariate.
 ```{julia}
-ridgeplot(samples; show_intercept=false, xlabel="Bootstrap density and 95%CI")
+ridgeplot(samples; show_intercept=false, xlabel="Bootstrap density and 95%CI", title="SoC judgements")
 ```
 
 **Discussing the results:** We find significant effects for (stating 95% CIs):
