@@ -485,8 +485,8 @@ m_varyingSlope_complex_zc = let
   end
 
 issingular(m_varyingSlope_complex_zc)  # NOT overparameterized
-VarCorr(m_varyingSlope_complex_zc)
-last(m_varyingSlope_complex_zc.λ)
+#VarCorr(m_varyingSlope_complex_zc)
+#last(m_varyingSlope_complex_zc.λ)
 
 ```
 

@@ -723,13 +723,33 @@ When modeling saccade landing site in terms of distance to spaceship, we find si
 
 ## Explore random effects
 
+### Including N_visible_obstacles as random intercept effect!!!!
+
+```{julia}
+
+my_cake = Dict(
+  :ID => Grouping(),
+  :total_control_loss => Grouping(),
+  :N_visible_obstacles => Grouping(),
+  :input_noise => HypothesisCoding(
+    [
+      -1 +1 0
+      0 -1 +1
+    ];
+    levels=["N", "W", "S"],
+    labels=["weak-none", "strong-weak"],
+  ),
+);
+```
+
 Including both, ID and total_control_loss as random intercept effect.
 ```{julia}
 #| label: m_varyingInt1
 
 m_varyingInt1 = let
-    formula = @formula(saccLandSite_dist_to_closestObstacle ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + 
+    formula = @formula(saccLandSite_dist_to_closestObstacle ~ 1 + N_visible_drift_tiles + input_noise + 
     (1 | ID) + 
+    (1 | N_visible_obstacles) +
     (1 | total_control_loss));
     fit(MixedModel, formula, my_data; contrasts=my_cake);
   end
@@ -741,7 +761,7 @@ issingular(m_varyingInt1) # NOT overparameterized
 ```{julia}
 
 VarCorr(m_varyingInt1)
-last(m_varyingInt1.λ)
+m_varyingInt1.λ  # ID, N_visible_obstacles, total_control_loss
 
 ```
 Looking at the variance and the lambda, we see that total_control_loss can only account for a marginal amount of variance. This won't weigh out the complexity it adds to the model. We will therefore omit total_control_loss as random effect.
@@ -752,37 +772,25 @@ Simply dumping the fixed effects structure into the random slopes.
 #| label: m_varyingSlope_complex
 
 m_varyingSlope_complex = let
-    formula = @formula(saccLandSite_dist_to_closestObstacle ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + 
-    (1 + N_visible_obstacles * N_visible_drift_tiles + input_noise | ID));
+    formula = @formula(saccLandSite_dist_to_closestObstacle ~ 1 + N_visible_drift_tiles + input_noise + 
+    (1 + N_visible_drift_tiles + input_noise | ID) + 
+    (1 + N_visible_drift_tiles + input_noise | N_visible_obstacles));
     fit(MixedModel, formula, my_data; contrasts=my_cake);
   end
 
-issingular(m_varyingSlope_complex) # overparameterized
+issingular(m_varyingSlope_complex) # Not overparameterized
 
 ```
-We detect singularity... deleting single parameter
+This is the most complex model that we can build. We will now start to eliminate individual terms and try to reduce model complexity.
 
-Starting with the interaction term within the random slopes:
-```{julia}
-#| label: m_varyingSlope_ni
-
-m_varyingSlope_ni = let
-    formula = @formula(saccLandSite_dist_to_closestObstacle ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + 
-    (1 + N_visible_obstacles + N_visible_drift_tiles + input_noise | ID));
-    fit(MixedModel, formula, my_data; contrasts=my_cake);
-  end
-
-issingular(m_varyingSlope_ni) # NOT overparameterized
-
-```
-That worked. This is our most complex model. Proceeding from here.
-
+Stating zero correlation between random effects:
 ```{julia}
 #| label: m_varyingSlope_zc
 
 m_varyingSlope_zc = let
-    formula = @formula(saccLandSite_dist_to_closestObstacle ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + 
-    zerocorr(1 + N_visible_obstacles + N_visible_drift_tiles + input_noise | ID));
+    formula = @formula(saccLandSite_dist_to_closestObstacle ~ 1 + N_visible_drift_tiles + input_noise + 
+    zerocorr(1 + N_visible_drift_tiles + input_noise | ID) + 
+    zerocorr(1 + N_visible_drift_tiles + input_noise | N_visible_obstacles));
     fit(MixedModel, formula, my_data; contrasts=my_cake);
   end
 
@@ -793,9 +801,9 @@ issingular(m_varyingSlope_zc) # NOT overparameterized
 ```{julia}
 
 gof_summary = let
-  nms = [:m_varyingSlope_ni, :m_varyingSlope_zc]
+  nms = [:m_varyingSlope_complex, :m_varyingSlope_zc]
   mods = eval.(nms)
-  lrt = MixedModels.likelihoodratiotest(m_varyingSlope_ni, m_varyingSlope_zc)
+  lrt = MixedModels.likelihoodratiotest(m_varyingSlope_complex, m_varyingSlope_zc)
   DataFrame(;
     name = nms, 
     dof=dof.(mods),
@@ -810,15 +818,16 @@ gof_summary = let
 end
 
 ```
-In this case, correlation between random slopes is favored. Proceeding with m_varyingSlope_ni.
+In this case, **no** correlation between random slopes is favored (BIC, bit not AIC). Proceeding with m_varyingSlope_zc.
 
 Deleting input_noise
 ```{julia}
 #| label: m_varyingSlope1
 
 m_varyingSlope1 = let
-    formula = @formula(saccLandSite_dist_to_closestObstacle ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + 
-    (1 + N_visible_obstacles + N_visible_drift_tiles | ID));
+    formula = @formula(saccLandSite_dist_to_closestObstacle ~ 1 + N_visible_drift_tiles + input_noise + 
+    zerocorr(1 + N_visible_drift_tiles | ID) + 
+    zerocorr(1 + N_visible_drift_tiles | N_visible_obstacles));
     fit(MixedModel, formula, my_data; contrasts=my_cake);
   end
 
@@ -829,9 +838,9 @@ issingular(m_varyingSlope1) # NOT overparameterized
 ```{julia}
 
 gof_summary = let
-  nms = [:m_varyingSlope_ni, :m_varyingSlope1]
+  nms = [:m_varyingSlope_zc, :m_varyingSlope1]
   mods = eval.(nms)
-  lrt = MixedModels.likelihoodratiotest(m_varyingSlope_ni, m_varyingSlope1)
+  lrt = MixedModels.likelihoodratiotest(m_varyingSlope_zc, m_varyingSlope1)
   DataFrame(;
     name = nms, 
     dof=dof.(mods),
@@ -848,13 +857,14 @@ end
 ```
 Input_noise should be kept as random slope effect.
 
-Deleting N_visible_obstacles
+Deleting N_visible_drift_tiles instead...
 ```{julia}
 #| label: m_varyingSlope2
 
 m_varyingSlope2 = let
-    formula = @formula(saccLandSite_dist_to_closestObstacle ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + 
-    (1 + N_visible_drift_tiles + input_noise | ID));
+    formula = @formula(saccLandSite_dist_to_closestObstacle ~ 1 + N_visible_drift_tiles + input_noise + 
+    zerocorr(1 + input_noise | ID) + 
+    zerocorr(1 + input_noise | N_visible_obstacles));
     fit(MixedModel, formula, my_data; contrasts=my_cake);
   end
 
@@ -865,9 +875,9 @@ issingular(m_varyingSlope2) # NOT overparameterized
 ```{julia}
 
 gof_summary = let
-  nms = [:m_varyingSlope_ni, :m_varyingSlope2]
+  nms = [:m_varyingSlope_zc, :m_varyingSlope2]
   mods = eval.(nms)
-  lrt = MixedModels.likelihoodratiotest(m_varyingSlope_ni, m_varyingSlope2)
+  lrt = MixedModels.likelihoodratiotest(m_varyingSlope_zc, m_varyingSlope2)
   DataFrame(;
     name = nms, 
     dof=dof.(mods),
@@ -882,43 +892,7 @@ gof_summary = let
 end
 
 ```
-Should also be kept.
-
-Deleting N_visible_drift_tiles instead...
-```{julia}
-#| label: m_varyingSlope3
-
-m_varyingSlope3 = let
-    formula = @formula(saccLandSite_dist_to_closestObstacle ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + 
-    (1 + N_visible_obstacles + input_noise | ID));
-    fit(MixedModel, formula, my_data; contrasts=my_cake);
-  end
-
-issingular(m_varyingSlope3) # NOT overparameterized
-
-```
-
-```{julia}
-
-gof_summary = let
-  nms = [:m_varyingSlope_ni, :m_varyingSlope3]
-  mods = eval.(nms)
-  lrt = MixedModels.likelihoodratiotest(m_varyingSlope_ni, m_varyingSlope3)
-  DataFrame(;
-    name = nms, 
-    dof=dof.(mods),
-    deviance=round.(deviance.(mods), digits=0),
-    AIC=round.(aic.(mods),digits=0),
-    AICc=round.(aicc.(mods),digits=0),
-    BIC=round.(bic.(mods),digits=0),
-    χ²=vcat(:., round.(lrt.tests.deviancediff, digits=0)),
-    χ²_dof=vcat(:., round.(lrt.tests.dofdiff, digits=0)),
-    pvalue=vcat(:., round.(lrt.tests.pvalues, digits=3))
-  )
-end
-
-```
-Nope, referring to BIC (or AIC), the complex model without the interaction term wins out. m_varyingSlope_ni is therefore our selected model.
+Nope, referring to BIC (or AIC), the complex model with N_visible_drift_tiles as random slope wins.
 
 ## Caterpillar plot
 
@@ -927,9 +901,10 @@ We can check the correlation between the random slopes by looking at the caterpi
 #| fig-cap1: Prediction intervals on subject random effects for model m_varyingSlope_complex
 #| label: fig-cm_varyingSlope
 #|
-cm_varyingSlope = first(ranefinfo(m_varyingSlope_ni));
+cm_varyingSlope = first(ranefinfo(m_varyingSlope_zc));
 caterpillar!(Figure(; resolution=(800, 1200)), cm_varyingSlope; orderby=1)
 ```
+And visually it looks like zerocorr is not valid, but it was the better model...
 
 ## Shrinkage plot
 
@@ -938,7 +913,7 @@ caterpillar!(Figure(; resolution=(800, 1200)), cm_varyingSlope; orderby=1)
 #| label: fig-shrinkage
 #|
 #| fig-cap: Shrinkage plots of the subject random effects in the chosen model
-shrinkageplot!(Figure(; resolution=(1000, 1200)), m_varyingSlope_ni)
+shrinkageplot!(Figure(; resolution=(1000, 1200)), m_varyingSlope_zc)
 
 ```
 Again shrinkage happens to data points that didn't show a strong linear trend before.
@@ -946,7 +921,7 @@ Again shrinkage happens to data points that didn't show a strong linear trend be
 ## Bootstrapping
 
 ```{julia}
-samples = parametricbootstrap(RNG, N_iterations, m_varyingSlope_ni)
+samples = parametricbootstrap(RNG, N_iterations, m_varyingSlope_zc)
 tbl = samples.tbl
 ```
 
@@ -962,5 +937,5 @@ Native ridgeplot
 ```{julia}
 ridgeplot(samples; show_intercept=false, xlabel="Bootstrap density and 95%CI")
 ```
-Of all fixed effects, only N_visible_obstacles has an effect on the distance between saccade landing sites and the closest obstacle, decreasing it significantly (-0.618816, -0.457202). Which is no suprise... more obstacles=less free space=eyes will always be closer to obstacles. We find no sognificant effects for either level of input noise (our hypothesis).
+We find no significant effects for N_visible_drift_tiles or either level of input noise (our hypothesis).
 
