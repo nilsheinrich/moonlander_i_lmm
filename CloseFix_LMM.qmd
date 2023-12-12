@@ -1,5 +1,5 @@
 ---
-title: "Nils Wendel Heinrich: Resting Fixations"
+title: "Nils Wendel Heinrich: Close Fixations"
 subtitle: "Moonlander I - Analysis"
 author: "Nils Wendel Heinrich"
 date: "2023-09-25"
@@ -59,7 +59,7 @@ Two possible random effects: **ID** (the subject itself) and **total_control_los
 ```{julia}
 #| label: data
 
-my_data = DataFrame(Arrow.Table("data/Experiment1_RestingFixations.arrow"))
+my_data = DataFrame(Arrow.Table("data/Experiment1_CloseFixations.arrow"))
 my_data = dropmissing(my_data, [:N_visible_obstacles, :N_visible_drift_tiles])
 
 # Filtering saccades with no amplitude
@@ -296,6 +296,12 @@ Referring to BIC, _complex_zc is ahead. We will therefore continue with hypothes
 ### Model selection
 Finally taking a look at the main effects within m_varyingSlope_complex_zc:
 ```{julia}
+#| label: m_varyingSlope_complex_zc fitted with REML
+
+m_varyingSlope_complex_zc = let
+    varSlop = @formula(log(fixation_duration) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + zerocorr(1 + N_visible_obstacles + N_visible_drift_tiles + input_noise | ID));
+    fit(MixedModel, varSlop, my_data; contrasts=my_cake, REML=true);
+  end
 
 VarCorr(m_varyingSlope_complex_zc)
 
@@ -358,7 +364,7 @@ Now let's plot the bounds (without intercept) to visualize when 0 is within the 
 ```{julia}
 ridgeplot(samples; show_intercept=false, xlabel="Bootstrap density and 95%CI", title="Fixation duration (close fixations)")
 ```
-We see significance only for **N_visible_drift_tiles**. Input noise, N_visible_obstacles, and the interaction effect don't seem to significanty affect the fixation duration in resting fixations.
+We see significance only for **N_visible_drift_tiles**. Input noise, N_visible_obstacles, and the interaction effect don't seem to significanty affect the fixation duration in close fixations.
 
 Zooming in on the interaction effect.
 ```{julia}
@@ -602,6 +608,13 @@ m_varyingSlope_complex_zc prevails. We will therefore refer to _complex_zc for h
 Finally taking a look at the main effects within the selected model:
 
 ```{julia}
+#| label: m_varyingSlope_complex_zc fitted with REML
+
+m_varyingSlope_complex_zc = let
+    varSlope = @formula(distance_to_spaceship ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + zerocorr(1 + N_visible_obstacles * N_visible_drift_tiles + input_noise | ID));
+    fit(MixedModel, varSlope, my_data; contrasts=my_cake, REML=true);
+  end
+
 m_varyingSlope_complex_zc
 ```
 
