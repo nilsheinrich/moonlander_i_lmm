@@ -358,4 +358,8 @@ Visualizing 95% CIs individually for every covariate.
 ```{julia}
 ridgeplot(samples; show_intercept=false, xlabel="Bootstrap density and 95%CI", title="Input duration")
 ```
-We detect significant effects for **N_visible_obstcales**, **N_visible_drift_tiles**, and their **interaction** effect. The CIs show no evidence for either level of input_noise significantly affecting input duration.
+We detect significant effects for 
+**N_visible_obstcales** [0.0123142, 0.0231702],
+**N_visible_drift_tiles** [0.362015, 0.44076], 
+and their **interaction** effect [-0.0197683, -0.014023]. 
+The CIs show no evidence for either level of input_noise significantly affecting input duration.
