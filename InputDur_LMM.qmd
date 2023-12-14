@@ -363,3 +363,8 @@ We detect significant effects for
 **N_visible_drift_tiles** [0.362015, 0.44076], 
 and their **interaction** effect [-0.0197683, -0.014023]. 
 The CIs show no evidence for either level of input_noise significantly affecting input duration.
+
+# Discussion
+In a post-hoc analysis (eye_movement_analysis/input_data_analysis.ipynb), we find that in 0.8419563459983832%  (84.2%) of drift cases, participants countered drift by steering against the applied drift. That is well above chance and might reflect a general strategy to deal with environmental drift. Something that we don't find for input noise. 
+
+Here, we only considered drifts that are below the agent (currently applying or about to apply) and visible.
