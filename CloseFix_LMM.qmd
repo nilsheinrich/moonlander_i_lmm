@@ -63,7 +63,7 @@ my_data = DataFrame(Arrow.Table("data/Experiment1_CloseFixations.arrow"))
 my_data = dropmissing(my_data, [:N_visible_obstacles, :N_visible_drift_tiles])
 
 # Filtering saccades with no amplitude
-my_data = my_data[(my_data.fixation_duration .> 0), :]
+my_data = my_data[(my_data.fixation_duration .>= 0.06), :]
 
 describe(my_data)
 ```
@@ -106,7 +106,7 @@ m_varyingInt1 = let
 issingular(m_varyingInt1) # singular
 
 ```
-we detect overparamterization. I suspect total_control_loss to hold no variance. Let's check it out
+we detect overparameterization. I suspect total_control_loss to hold no variance. Let's check it out
 
 ```{julia}
 
@@ -364,7 +364,7 @@ Now let's plot the bounds (without intercept) to visualize when 0 is within the 
 ```{julia}
 ridgeplot(samples; show_intercept=false, xlabel="Bootstrap density and 95%CI", title="Fixation duration (close fixations)")
 ```
-We see significance only for **N_visible_drift_tiles**. Input noise, N_visible_obstacles, and the interaction effect don't seem to significanty affect the fixation duration in close fixations.
+We see significance only for **N_visible_drift_tiles** and the **interaction** term. Input noise and N_visible_obstacles don't seem to significanty affect the fixation duration in close fixations.
 
 Zooming in on the interaction effect.
 ```{julia}
@@ -374,7 +374,7 @@ plt = data(tbl) * mapping(
   ) * AoG.density()
 draw(plt; figure=(;supertitle="Parametric bootstrap β estimates of variance components"))
 ```
-Of the fixed effects included in our model, only **N_visible_drift_tiles** significantly influences (increases) the fixation duration in resting fixations.
+Of the fixed effects included in our model, **N_visible_drift_tiles** significantly influences (increases) the fixation duration in resting fixations while the significant **interaction** term tells us that the effect of **N_visible_drift_tiles** depends on **N_visible_obstacles**.
 
 # Modeling fixation location
 
@@ -666,4 +666,4 @@ plt = data(tbl) * mapping(
 draw(plt; figure=(;supertitle="Parametric bootstrap β estimates of variance components"))
 ```
 
-We detect significant effects for **N_visible_obstacles** , **N_visible_drift_tiles** individually but not for their interaction effect. **input noise: strong** (in comparison to input_noise: weak) also significantly influences fixation location in resting fixations.
+We detect significant effects for **N_visible_obstacles** , **N_visible_drift_tiles** individually but also for their interaction effect (both **negatively** influencing the effect of the other). **input noise: strong** (in comparison to input_noise: weak) also significantly influences (decreases) fixation location in resting fixations.
