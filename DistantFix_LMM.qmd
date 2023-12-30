@@ -737,7 +737,7 @@ Varying intercepts for **ID** and **N_visible_obstacles**:
 #| label: m_varyingInt1
 
 m_varyingInt1 = let
-    formula = @formula(Dist_to_closest_obstacles ~ 1 + N_visible_drift_tiles + input_noise 
+    formula = @formula(log(Dist_to_closest_obstacles) ~ 1 + N_visible_drift_tiles + input_noise 
     + (1 | ID) 
     + (1 | N_visible_obstacles));
     fit(MixedModel, formula, my_data; contrasts=my_cake);
@@ -755,7 +755,7 @@ starting with the most complex model.
 #| label: m_varyingSlope_complex
 
 m_varyingSlope_complex = let
-    formula = @formula(Dist_to_closest_obstacles ~ 1 + N_visible_drift_tiles + input_noise 
+    formula = @formula(log(Dist_to_closest_obstacles) ~ 1 + N_visible_drift_tiles + input_noise 
     + (1 + N_visible_drift_tiles + input_noise | ID) 
     + (1 + N_visible_drift_tiles + input_noise | N_visible_obstacles));
     fit(MixedModel, formula, my_data; contrasts=my_cake);
@@ -770,7 +770,7 @@ We detect singularity. First thing we can do is to state zerocorr.
 #| label: m_varyingSlope_complex_zc
 
 m_varyingSlope_complex_zc = let
-    formula = @formula(Dist_to_closest_obstacles ~ 1 + N_visible_drift_tiles + input_noise 
+    formula = @formula(log(Dist_to_closest_obstacles) ~ 1 + N_visible_drift_tiles + input_noise 
     + zerocorr(1 + N_visible_drift_tiles + input_noise | ID) 
     + zerocorr(1 + N_visible_drift_tiles + input_noise | N_visible_obstacles));
     fit(MixedModel, formula, my_data; contrasts=my_cake);
@@ -786,7 +786,7 @@ Only keeping input_noise as random slope:
 #| label: m_varyingSlope_in
 
 m_varyingSlope_in = let
-    formula = @formula(Dist_to_closest_obstacles ~ 1 + N_visible_drift_tiles + input_noise 
+    formula = @formula(log(Dist_to_closest_obstacles) ~ 1 + N_visible_drift_tiles + input_noise 
     + zerocorr(1 + input_noise | ID) 
     + zerocorr(1 + input_noise | N_visible_obstacles));
     fit(MixedModel, formula, my_data; contrasts=my_cake);
@@ -801,7 +801,7 @@ Only keeping N_drift_tiles as random slope:
 #| label: m_varyingSlope_d_zc
 
 m_varyingSlope_d_zc = let
-    formula = @formula(Dist_to_closest_obstacles ~ 1 + N_visible_drift_tiles + input_noise 
+    formula = @formula(log(Dist_to_closest_obstacles) ~ 1 + N_visible_drift_tiles + input_noise 
     + zerocorr(1 + N_visible_drift_tiles | ID) 
     + zerocorr(1 + N_visible_drift_tiles | N_visible_obstacles));
     fit(MixedModel, formula, my_data; contrasts=my_cake);
@@ -839,7 +839,7 @@ Allowing correlation between random effects again (without stating zerocorr):
 #| label: m_varyingSlope_d
 
 m_varyingSlope_d = let
-    formula = @formula(Dist_to_closest_obstacles ~ 1 + N_visible_drift_tiles + input_noise 
+    formula = @formula(log(Dist_to_closest_obstacles) ~ 1 + N_visible_drift_tiles + input_noise 
     + (1 + N_visible_drift_tiles | ID) 
     + (1 + N_visible_drift_tiles | N_visible_obstacles));
     fit(MixedModel, formula, my_data; contrasts=my_cake);
@@ -876,7 +876,7 @@ Referrin to BIC, the zerocorr model wins (not when referring to AIC though). We 
 #| label: m_varyingSlope_d_zc fitted with REML
 
 m_varyingSlope_d_zc = let
-    formula = @formula(Dist_to_closest_obstacles ~ 1 + N_visible_drift_tiles + input_noise 
+    formula = @formula(log(Dist_to_closest_obstacles) ~ 1 + N_visible_drift_tiles + input_noise 
     + zerocorr(1 + N_visible_drift_tiles | ID) 
     + zerocorr(1 + N_visible_drift_tiles | N_visible_obstacles));
     fit(MixedModel, formula, my_data; contrasts=my_cake, REML=true);
