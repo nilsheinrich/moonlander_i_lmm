@@ -64,6 +64,8 @@ describe(my_data)
 ```
 we will only consider successful runs. Crashs may lead in a strong variance in N_fixations.
 
+# Predicting total number of fixations during trial
+
 ### Contrasts
 
 We will declare **ID** as grouping variable as well as define the effects coding for the discrete covariate input noise.
@@ -221,7 +223,15 @@ Now it gets tricky: referring to BIC m_varyingInt1 wins, but referring to AIC, t
 ### Model selection
 ```{julia}
 #| label: main_effects
+
+m_varyingInt1 = let
+    formula = @formula(N_fixations ~ 1 + level_difficulty * drift + input_noise + N_consecutive_crash_success + (1 | ID));
+    fit(MixedModel, formula, my_data; contrasts=my_cake, REML=true);
+  end
+
+issingular(m_varyingInt1) # Not overparamterized
 m_varyingInt1
+
 ```
 Nothing reaches significance. Running bootstrap
 
@@ -567,9 +577,18 @@ _simple2 is favored by BIC (and AIC). We found our model that best describes the
 ## Model selection
 Sticking to m_varyingSlope_simple2. 
 ```{julia}
+
+m_varyingSlope_simple2 = let
+    formula = @formula(N_distant_fixations/N_fixations ~ 1 + level_difficulty * drift + input_noise + N_consecutive_crash_success + 
+    zerocorr(1 + N_consecutive_crash_success | ID));
+    fit(MixedModel, formula, my_data; contrasts=my_cake, REML=true);
+  end
+
+issingular(m_varyingSlope_simple2) # NOT overparamterized
+
 m_varyingSlope_simple2
 ```
-1 main effect is significant: level_difficulty: hard & drift 
+1 main effect is significant: level_difficulty: hard & drift -interaction
 
 ## Bootstrapping
 ```{julia}
@@ -585,7 +604,6 @@ Visualizing 95% CIs individually for every covariate.
 ```{julia}
 ridgeplot(samples; show_intercept=false, xlabel="Bootstrap density and 95%CI")
 ```
-We see a significant decrease in the ratio of distant fixations in the total amount of fixations caused by the **interaction between level_difficulty:hard and drift**.
 
 # Predicting N_saccades
 
@@ -674,7 +692,15 @@ issingular(m_varyingSlope_) # overparamterized
 ## Model selection
 Sticking to m_varyingInt1. 
 ```{julia}
+
+m_varyingInt1 = let
+    formula = @formula(N_saccades ~ 1 + level_difficulty * drift + input_noise + N_consecutive_crash_success + (1 | ID));
+    fit(MixedModel, formula, my_data; contrasts=my_cake, REML=true);
+  end
+
+issingular(m_varyingInt1) # Not overparamterized
 m_varyingInt1
+
 ```
 No main effect is significant.
 
@@ -871,11 +897,11 @@ Including only a single random slope always results in singularity. Proceeding w
 
 m_varyingInt1 = let
     formula = @formula(done ~ 1 + level_difficulty * drift + input_noise + (1 | ID));
-    fit(MixedModel, formula, my_data, dist; contrasts=my_cake, REML=true);
+    fit(MixedModel, formula, my_data, dist; contrasts=my_cake);
   end
 
 ```
-DOES NOT WORK - **got unsupported keyword argument "REML"**
+REML=true DOES NOT WORK - **got unsupported keyword argument "REML"**
 
 ```{julia}
 VarCorr(m_varyingInt1)
@@ -906,7 +932,7 @@ preds = effects(covariate_levels, m_varyingInt1; invlink=AutoInvLink())
 significant effects for:
 - level_difficulty: hard (-3.63577, p<.00)
 - level_difficulty: medium (-2.17203, p=0.0007)
-- input_noise: strong-weak (-0.83504, p<.00)
-- level_difficulty: hard & drift (-2.59284, p=0.0016)
+- input_noise: strong-weak (-0.83504, p<.00), not for weak-none (-0.207822, p=0.2924)
+- level_difficulty: hard & drift (-2.59284, p=0.0016), not for medium & drift (-1.09482, p=0.1913)
 
 

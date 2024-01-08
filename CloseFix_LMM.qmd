@@ -374,7 +374,8 @@ plt = data(tbl) * mapping(
   ) * AoG.density()
 draw(plt; figure=(;supertitle="Parametric bootstrap β estimates of variance components"))
 ```
-Of the fixed effects included in our model, **N_visible_drift_tiles** significantly influences (increases) the fixation duration in resting fixations while the significant **interaction** term tells us that the effect of **N_visible_drift_tiles** depends on **N_visible_obstacles**.
+Of the fixed effects included in our model, 
+**N_visible_drift_tiles** significantly influences (increases; 0.113611, 0.217341) the fixation duration in resting fixations while the significant **interaction** (-0.0189315, -0.00785566)term tells us that the effect of **N_visible_drift_tiles** depends on **N_visible_obstacles**.
 
 # Modeling fixation location
 
@@ -666,4 +667,7 @@ plt = data(tbl) * mapping(
 draw(plt; figure=(;supertitle="Parametric bootstrap β estimates of variance components"))
 ```
 
-We detect significant effects for **N_visible_obstacles** , **N_visible_drift_tiles** individually but also for their interaction effect (both **negatively** influencing the effect of the other). **input noise: strong** (in comparison to input_noise: weak) also significantly influences (decreases) fixation location in resting fixations.
+We detect significant effects for 
+**N_visible_obstacles** (0.0582249, 0.0800431) and 
+**N_visible_drift_tiles** (0.115041, 0.291584) individually but also for their interaction effect (both **negatively** influencing the effect of the other; -0.033951, -0.00605766). 
+**input noise: strong** (in comparison to input_noise: weak) also significantly influences (decreases; -0.154391, -0.0557975) fixation location in resting fixations.

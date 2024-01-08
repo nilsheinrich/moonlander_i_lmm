@@ -936,4 +936,4 @@ draw(plt; figure=(;supertitle="Parametric bootstrap β estimates of variance com
 ridgeplot(samples; show_intercept=false, xlabel="Bootstrap density and 95%CI", title="Distance to closest obstacle (distant fixations)")
 ```
 
-**N_visible_drift_tiles** significantly increases the distance to the closest obstacle in distant fixations. Either level of input noise has no effect on the predicted variable.
+**N_visible_drift_tiles** significantly increases the distance to the closest obstacle in distant fixations (0.0281533, 0.0789406). Either level of input noise has no effect on the predicted variable.
