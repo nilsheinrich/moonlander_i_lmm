@@ -412,6 +412,8 @@ plt = data(tbl) * mapping(
 draw(plt; figure=(;supertitle="Parametric bootstrap β estimates of variance components"))
 ```
 
+**Discussing the results:** Only **N_visible_obstacles** affetcs the fixation duration in distant fixations (0.00617624, 0.0220704).
+
 # Modeling fixation location - distance to spaceship
 
 Varying intercepts for **ID** and **total_control_loss**:
@@ -712,7 +714,7 @@ draw(plt; figure=(;supertitle="Parametric bootstrap β estimates of variance com
 ```
 95% CI is not intersecting with x=0-line.
 
-We find **no** significance for either level of input noise. We however find that **N_visible_obstacles** is significantly **decreasing** distance to the spaceship within exploring fixations and that N_visible_obstacles and N_visible_drift_tiles positively **interact** with each other. The interaction effect tells us that the effect of N_visible_obstacles depends on the level of N_visible_drift_tiles and vice versa. 
+We find **no** significance for either level of input noise. We however find that **N_visible_obstacles** is significantly **decreasing** distance to the spaceship within exploring fixations (-0.133784, -0.0334897) and that N_visible_obstacles and N_visible_drift_tiles negatively **interact** with each other (-0.0887903, -0.0144909). The interaction effect tells us that the effect of N_visible_obstacles depends on the level of N_visible_drift_tiles and vice versa. 
 
 # Modeling fixation location - distance to closest obstacle
 Controlling for the number of visible obstacles.
