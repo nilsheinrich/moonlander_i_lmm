@@ -53,7 +53,7 @@ N_iterations = 10000
 const AoG = AlgebraOfGraphics;
 ```
 
-Two possible random effects: **ID** (the subject itself) and **total_control_loss** (whether subject reported having lost all control in specific situations).
+Possible random effects: **ID** (the subject itself).
 
 ```{julia}
 #| label: data
@@ -69,13 +69,12 @@ describe(my_data)
 
 ### Contrasts
 
-We will declare **ID** and **total_control_loss** as a grouping variable as well as define the effects coding for the discrete covariate input noise.
+We will declare **ID** as a grouping variable as well as define the effects coding for the discrete covariate input noise.
 
 #### Hypothesis Coding
 ```{julia}
 #my_cake = Dict(
 #  :ID => Grouping(),
-#  :total_control_loss => Grouping(),
 #  :input_noise => EffectsCoding(; levels=["N", "W", "S"]),
 #  :Test => HypothesisCoding(
 #    [
@@ -89,7 +88,6 @@ We will declare **ID** and **total_control_loss** as a grouping variable as well
 
 my_cake = Dict(
   :ID => Grouping(),
-  :total_control_loss => Grouping(),
   :input_noise => HypothesisCoding(
     [
       -1 +1 0
@@ -108,39 +106,16 @@ We will log transform the predicted variable within the formula stated in the LM
 
 ### Only varying intercept LMM
 
-Varying intercepts for **ID** and **total_control_loss**:
 ```{julia}
 #| label: m_varyingInt1
 
 m_varyingInt1 = let
-    formula = @formula(log(saccade_amplitude) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + (1 | ID) + (1 | total_control_loss));
-    fit(MixedModel, formula, my_data; contrasts=my_cake);
-  end
-
-issingular(m_varyingInt1) # singular
-
-```
-We detect singularity. One of the random intercept effects does not explain variance within the data to a sufficient amount. Expecting total_control_loss to be the issue here.
-
-```{julia}
-
-#first: ID
-VarCorr(m_varyingInt1)
-last(m_varyingInt1.λ)  # for total_control_loss: 0.0
-
-```
-Yep. Neglecting total_control_loss from here on.
-
-```{julia}
-#| label: m_varyingInt2
-
-m_varyingInt2 = let
     formula = @formula(log(saccade_amplitude) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + (1 | ID));
     fit(MixedModel, formula, my_data; contrasts=my_cake);
   end
 
-issingular(m_varyingInt2)
-VarCorr(m_varyingInt2)
+issingular(m_varyingInt1)
+VarCorr(m_varyingInt1)
 
 ```
 ID will be kept as random effect. We are good to go and explore random slope effects.
@@ -344,11 +319,11 @@ m_varyingSlope_complex_zc prevails. We will refer to that model for hypothesis t
 
 ## Model selection
 ```{julia}
-#| label: m_varyingSlope_complex_zc fitted with REML
+#| label: m_varyingSlope_complex_zc
 
 m_varyingSlope_complex_zc = let
     formula = @formula(log(saccade_amplitude) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + zerocorr(1 + N_visible_obstacles + N_visible_drift_tiles + input_noise | ID));
-    fit(MixedModel, formula, my_data; contrasts=my_cake, REML=true);
+    fit(MixedModel, formula, my_data; contrasts=my_cake);
   end
 
 m_varyingSlope_complex_zc
@@ -428,29 +403,6 @@ We see significance only for the **N_visible_obstacles** (negative), meaning thi
 
 ## Explore random effects
 
-Including both, ID and total_control_loss as random intercept effect.
-```{julia}
-#| label: m_varyingInt1
-
-m_varyingInt1 = let
-    formula = @formula(saccLandSite_dist_to_spaceship ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + (1 | ID) + (1 | total_control_loss));
-    fit(MixedModel, formula, my_data; contrasts=my_cake);
-  end
-
-issingular(m_varyingInt1)
-#VarCorr(m_varyingInt1)
-#last(m_varyingInt1.λ)
-
-```
-We detect singularity. Against expecting total_control_loss to be the issue here.
-
-```{julia}
-
-VarCorr(m_varyingInt1)
-
-```
-
-Leaving out total_control_loss
 ```{julia}
 #| label: m_varyingInt1
 
@@ -671,11 +623,11 @@ m_varyingSlope_zc wins again. It seems that this is the best model for describin
 
 ## Model selection
 ```{julia}
-#| label: m_varyingSlope_zc fitted with REML
+#| label: m_varyingSlope_zc
 
 m_varyingSlope_zc = let
     formula = @formula(saccLandSite_dist_to_spaceship ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + zerocorr(1 + N_visible_obstacles + N_visible_drift_tiles + input_noise | ID));
-    fit(MixedModel, formula, my_data; contrasts=my_cake, REML=true);
+    fit(MixedModel, formula, my_data; contrasts=my_cake);
   end
 
 m_varyingSlope_zc
@@ -755,7 +707,6 @@ When modeling saccade landing site in terms of distance to spaceship, we find si
 
 my_cake = Dict(
   :ID => Grouping(),
-  :total_control_loss => Grouping(),
   :N_visible_obstacles => Grouping(),
   :input_noise => HypothesisCoding(
     [
@@ -768,29 +719,20 @@ my_cake = Dict(
 );
 ```
 
-Including both, ID and total_control_loss as random intercept effect.
+Including both, ID and N_visible_obstacles as random intercept effect.
 ```{julia}
 #| label: m_varyingInt1
 
 m_varyingInt1 = let
     formula = @formula(saccLandSite_dist_to_closestObstacle ~ 1 + N_visible_drift_tiles + input_noise + 
     (1 | ID) + 
-    (1 | N_visible_obstacles) +
-    (1 | total_control_loss));
+    (1 | N_visible_obstacles));
     fit(MixedModel, formula, my_data; contrasts=my_cake);
   end
 
 issingular(m_varyingInt1) # NOT overparameterized
 
 ```
-
-```{julia}
-
-VarCorr(m_varyingInt1)
-m_varyingInt1.λ  # ID, N_visible_obstacles, total_control_loss
-
-```
-Looking at the variance and the lambda, we see that total_control_loss can only account for a marginal amount of variance. This won't weigh out the complexity it adds to the model. We will therefore omit total_control_loss as random effect.
 
 ### Exploring random slopes
 Simply dumping the fixed effects structure into the random slopes.
@@ -922,13 +864,13 @@ Nope, referring to BIC (or AIC), the complex model with N_visible_drift_tiles as
 
 ## Model selection
 ```{julia}
-#| label: m_varyingSlope_zc fitted with REML
+#| label: m_varyingSlope_zc
 
 m_varyingSlope_zc = let
     formula = @formula(saccLandSite_dist_to_closestObstacle ~ 1 + N_visible_drift_tiles + input_noise + 
     zerocorr(1 + N_visible_drift_tiles + input_noise | ID) + 
     zerocorr(1 + N_visible_drift_tiles + input_noise | N_visible_obstacles));
-    fit(MixedModel, formula, my_data; contrasts=my_cake, REML=true);
+    fit(MixedModel, formula, my_data; contrasts=my_cake);
   end
 
 m_varyingSlope_zc

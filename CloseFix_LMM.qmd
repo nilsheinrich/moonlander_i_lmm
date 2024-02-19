@@ -54,7 +54,7 @@ const AoG = AlgebraOfGraphics;
 # Modeling fixation duration
 
 ## Code book
-Two possible random effects: **ID** (the subject itself) and **total_control_loss** (whether subject reported having lost all control in specific situations).
+Possible random effects: only **ID** (the subject itself).
 
 ```{julia}
 #| label: data
@@ -70,13 +70,12 @@ describe(my_data)
 
 ### Contrasts
 
-We will declare **ID** and **total_control_loss** as a grouping variable as well as define the effects coding for the discrete covariate input noise.
+We will declare **ID** as a grouping variable as well as define the effects coding for the discrete covariate input noise.
 
 #### Hypothesis Coding
 ```{julia}
 my_cake = Dict(
   :ID => Grouping(),
-  :total_control_loss => Grouping(),
   :input_noise => HypothesisCoding(
     [
       -1 +1 0
@@ -94,39 +93,16 @@ my_cake = Dict(
 
 ### Only varying intercept LMM
 
-Varying intercepts for **ID** and **total_control_loss**:
 ```{julia}
 #| label: m_varyingInt1
 
 m_varyingInt1 = let
-    varInt = @formula(log(fixation_duration) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + (1 | ID) + (1 | total_control_loss));
-    fit(MixedModel, varInt, my_data; contrasts=my_cake);
-  end
-
-issingular(m_varyingInt1) # singular
-
-```
-we detect overparameterization. I suspect total_control_loss to hold no variance. Let's check it out
-
-```{julia}
-
-#first: ID
-VarCorr(m_varyingInt1)
-last(m_varyingInt1.λ)  # for total_control_loss: 0.0
-
-```
-Yep. We will neglect **total_control_loss** from here on.
-
-```{julia}
-#| label: m_varyingInt2
-
-m_varyingInt2 = let
     varInt = @formula(log(fixation_duration) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + (1 | ID));
     fit(MixedModel, varInt, my_data; contrasts=my_cake);
   end
 
-issingular(m_varyingInt2)
-VarCorr(m_varyingInt2)
+issingular(m_varyingInt1)
+VarCorr(m_varyingInt1)
 ```
 
 ### Exploring random effects structure of the model
@@ -296,11 +272,11 @@ Referring to BIC, _complex_zc is ahead. We will therefore continue with hypothes
 ### Model selection
 Finally taking a look at the main effects within m_varyingSlope_complex_zc:
 ```{julia}
-#| label: m_varyingSlope_complex_zc fitted with REML
+#| label: m_varyingSlope_complex_zc
 
 m_varyingSlope_complex_zc = let
     varSlop = @formula(log(fixation_duration) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + zerocorr(1 + N_visible_obstacles + N_visible_drift_tiles + input_noise | ID));
-    fit(MixedModel, varSlop, my_data; contrasts=my_cake, REML=true);
+    fit(MixedModel, varSlop, my_data; contrasts=my_cake);
   end
 
 VarCorr(m_varyingSlope_complex_zc)
@@ -364,7 +340,7 @@ Now let's plot the bounds (without intercept) to visualize when 0 is within the 
 ```{julia}
 ridgeplot(samples; show_intercept=false, xlabel="Bootstrap density and 95%CI", title="Fixation duration (close fixations)")
 ```
-We see significance only for **N_visible_drift_tiles** and the **interaction** term. Input noise and N_visible_obstacles don't seem to significanty affect the fixation duration in close fixations.
+We see significance for **N_visible_obstalces** and **N_visible_drift_tiles** and their **interaction** term. Input noise doesn't seem to significanty affect the fixation duration in close fixations.
 
 Zooming in on the interaction effect.
 ```{julia}
@@ -374,33 +350,15 @@ plt = data(tbl) * mapping(
   ) * AoG.density()
 draw(plt; figure=(;supertitle="Parametric bootstrap β estimates of variance components"))
 ```
-Of the fixed effects included in our model, 
-**N_visible_drift_tiles** significantly influences (increases; 0.113611, 0.217341) the fixation duration in resting fixations while the significant **interaction** (-0.0189315, -0.00785566)term tells us that the effect of **N_visible_drift_tiles** depends on **N_visible_obstacles**.
+Of the fixed effects included in our model, significant effects are:
+**N_visible_obstacles** (0.00392587, 0.0209003)
+**N_visible_drift_tiles** (0.114914, 0.203967) 
+**interaction** (-0.0194157, -0.0098614);
+- interaction term tells us that the effect of **N_visible_drift_tiles** depends on **N_visible_obstacles** and vice versa.
 
 # Modeling fixation location
 
-Exploring random effects:
-```{julia}
-#| label: m_varyingInt1
-
-m_varyingInt1 = let
-    varInt = @formula(distance_to_spaceship ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + (1 | ID) + (1 | total_control_loss));
-    fit(MixedModel, varInt, my_data; contrasts=my_cake);
-  end
-
-issingular(m_varyingInt1) # overparameterized
-
-```
-We detect singularity. I expect **total_control_loss** to be the issue here.
-
-```{julia}
-
-VarCorr(m_varyingInt1)
-
-```
-Yep. **total_control_loss** has no stated variance. We will therefore ditch it as random effect.
-
-# Modeling fixation location (in terms of distance to spaceship)
+## Modeling fixation location (in terms of distance to spaceship)
 
 ```{julia}
 #| label: m_varyingInt1
@@ -609,11 +567,11 @@ m_varyingSlope_complex_zc prevails. We will therefore refer to _complex_zc for h
 Finally taking a look at the main effects within the selected model:
 
 ```{julia}
-#| label: m_varyingSlope_complex_zc fitted with REML
+#| label: m_varyingSlope_complex_zc
 
 m_varyingSlope_complex_zc = let
     varSlope = @formula(distance_to_spaceship ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + zerocorr(1 + N_visible_obstacles * N_visible_drift_tiles + input_noise | ID));
-    fit(MixedModel, varSlope, my_data; contrasts=my_cake, REML=true);
+    fit(MixedModel, varSlope, my_data; contrasts=my_cake);
   end
 
 m_varyingSlope_complex_zc
@@ -668,6 +626,6 @@ draw(plt; figure=(;supertitle="Parametric bootstrap β estimates of variance com
 ```
 
 We detect significant effects for 
-**N_visible_obstacles** (0.0582249, 0.0800431) and 
-**N_visible_drift_tiles** (0.115041, 0.291584) individually but also for their interaction effect (both **negatively** influencing the effect of the other; -0.033951, -0.00605766). 
-**input noise: strong** (in comparison to input_noise: weak) also significantly influences (decreases; -0.154391, -0.0557975) fixation location in resting fixations.
+**N_visible_obstacles** (0.073475, 0.0990656) and 
+**N_visible_drift_tiles** (0.126059, 0.360188) individually but also for their interaction effect (both **negatively** influencing the effect of the other; -0.0461236, -0.0106101). 
+**input noise: strong** (in comparison to input_noise: weak) also significantly influences (decreases; -0.137928, -0.0192497) fixation location in resting fixations.

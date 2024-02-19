@@ -226,7 +226,7 @@ Now it gets tricky: referring to BIC m_varyingInt1 wins, but referring to AIC, t
 
 m_varyingInt1 = let
     formula = @formula(N_fixations ~ 1 + level_difficulty * drift + input_noise + N_consecutive_crash_success + (1 | ID));
-    fit(MixedModel, formula, my_data; contrasts=my_cake, REML=true);
+    fit(MixedModel, formula, my_data; contrasts=my_cake);
   end
 
 issingular(m_varyingInt1) # Not overparamterized
@@ -581,7 +581,7 @@ Sticking to m_varyingSlope_simple2.
 m_varyingSlope_simple2 = let
     formula = @formula(N_distant_fixations/N_fixations ~ 1 + level_difficulty * drift + input_noise + N_consecutive_crash_success + 
     zerocorr(1 + N_consecutive_crash_success | ID));
-    fit(MixedModel, formula, my_data; contrasts=my_cake, REML=true);
+    fit(MixedModel, formula, my_data; contrasts=my_cake);
   end
 
 issingular(m_varyingSlope_simple2) # NOT overparamterized
@@ -695,7 +695,7 @@ Sticking to m_varyingInt1.
 
 m_varyingInt1 = let
     formula = @formula(N_saccades ~ 1 + level_difficulty * drift + input_noise + N_consecutive_crash_success + (1 | ID));
-    fit(MixedModel, formula, my_data; contrasts=my_cake, REML=true);
+    fit(MixedModel, formula, my_data; contrasts=my_cake);
   end
 
 issingular(m_varyingInt1) # Not overparamterized
@@ -893,7 +893,7 @@ Including only a single random slope always results in singularity. Proceeding w
 
 ## Model selection
 ```{julia}
-#| label: m_varyingInt1 fitted with REML
+#| label: m_varyingInt1
 
 m_varyingInt1 = let
     formula = @formula(done ~ 1 + level_difficulty * drift + input_noise + (1 | ID));
@@ -901,7 +901,6 @@ m_varyingInt1 = let
   end
 
 ```
-REML=true DOES NOT WORK - **got unsupported keyword argument "REML"**
 
 ```{julia}
 VarCorr(m_varyingInt1)

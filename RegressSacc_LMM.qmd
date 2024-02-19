@@ -53,7 +53,7 @@ N_iterations = 10000
 const AoG = AlgebraOfGraphics;
 ```
 
-Two possible random effects: **ID** (the subject itself) and **total_control_loss** (whether subject reported having lost all control in specific situations).
+Possible random effects: **ID** (the subject itself).
 
 ```{julia}
 #| label: data
@@ -69,14 +69,13 @@ describe(my_data)
 
 ### Contrasts
 
-We will declare **ID** and **total_control_loss** as a grouping variable as well as define the effects coding for the discrete covariate input noise.
+We will declare **ID** as a grouping variable as well as define the effects coding for the discrete covariate input noise.
 
 #### Hypothesis Coding
 ```{julia}
 
 my_cake = Dict(
   :ID => Grouping(),
-  :total_control_loss => Grouping(),
   :input_noise => HypothesisCoding(
     [
       -1 +1 0
@@ -95,39 +94,17 @@ We will log transform the predicted variable within the formula stated in the LM
 
 ### Only varying intercept LMM
 
-Varying intercepts for **ID** and **total_control_loss**:
+Only ID as random effect.
 ```{julia}
 #| label: m_varyingInt1
 
 m_varyingInt1 = let
-    varInt = @formula(log(saccade_amplitude) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + (1 | ID) + (1 | total_control_loss));
-    fit(MixedModel, varInt, my_data; contrasts=my_cake);
-  end
-
-issingular(m_varyingInt1) # singular
-
-```
-We detect singularity. One of the random intercept effects does not explain variance within the data to a sufficient amount. Expecting total_control_loss to be the issue here.
-
-```{julia}
-
-#first: ID
-last(m_varyingInt1.λ)  # for total_control_loss: 0.0
-
-```
-Yep. Neglecting total_control_loss from here on.
-
-Only ID as random effect.
-```{julia}
-#| label: m_varyingInt2
-
-m_varyingInt2 = let
     varInt = @formula(log(saccade_amplitude) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + (1 | ID));
     fit(MixedModel, varInt, my_data; contrasts=my_cake);
   end
 
-issingular(m_varyingInt2)
-VarCorr(m_varyingInt2)
+issingular(m_varyingInt1)
+VarCorr(m_varyingInt1)
 
 ```
 ID seems to work as random effect.
@@ -384,38 +361,16 @@ We see significance only for the **N_visible_obstacles** (-0.0757759, -0.0372465
 
 ## Building models
 
-Varying intercepts for **ID** and **total_control_loss**:
+Varying intercept only for **ID**:
 ```{julia}
 #| label: m_varyingInt1
 
 m_varyingInt1 = let
-    varInt = @formula(saccLandSite_dist_to_spaceship ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + (1 | ID) + (1 | total_control_loss));
-    fit(MixedModel, varInt, my_data; contrasts=my_cake);
-  end
-
-issingular(m_varyingInt1) # singular
-
-```
-We detect singularity. One of the random intercept effects does not explain variance within the data to a sufficient amount. Expecting total_control_loss to be the issue here.
-
-```{julia}
-#| label: total_control lambda
-
-last(m_varyingInt1.λ)
-
-```
-Supported.
-
-Varying intercept only for **ID**:
-```{julia}
-#| label: m_varyingInt2
-
-m_varyingInt2 = let
     varInt = @formula(saccLandSite_dist_to_spaceship ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + (1 | ID));
     fit(MixedModel, varInt, my_data; contrasts=my_cake);
   end
 
-issingular(m_varyingInt2)
+issingular(m_varyingInt1)
 
 ```
 

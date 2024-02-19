@@ -357,11 +357,11 @@ Again done+drift reaches smaller BIC and AIC.
 
 ## Model selection
 ```{julia}
-#| label: m_varyingSlope_zc fitted with REML
+#| label: m_varyingSlope_zc
 
 m_varyingSlope_zc = let
     varSlope = @formula(SoC ~ 1 + done + level_difficulty * drift + input_noise + N_fixations + N_saccades + N_consecutive_crash_success + zerocorr(1 + done + drift | ID));
-    fit(MixedModel, varSlope, my_data; contrasts=my_cake, REML=true);
+    fit(MixedModel, varSlope, my_data; contrasts=my_cake);
   end
 
 ```
@@ -540,20 +540,20 @@ m_varyingSlope1 reached lowest BIC (and AIC). We will therefore proceed with dri
 
 ## Model selection
 ```{julia}
-#| label: m_varyingSlope1 fitted with REML
+#| label: m_varyingSlope1
 
 #m_varyingSlope1 = let
 #    varSlop = @formula(SoC ~ 1 + level_difficulty * drift + input_noise + N_fixations + N_saccades + N_consecutive_crash_success + 
 #    (1 + drift| ID) + 
 #    (1 | done));
-#    fit(MixedModel, varSlop, my_data; contrasts=my_cake, REML=true);
+#    fit(MixedModel, varSlop, my_data; contrasts=my_cake);
 #  end
 
 m_varyingSlope1 = let
     varSlop = @formula(SoC ~ 1 + level_difficulty * drift + input_noise + N_consecutive_crash_success + 
     (1 + drift| ID) + 
     (1 | done));
-    fit(MixedModel, varSlop, my_data; contrasts=my_cake, REML=true);
+    fit(MixedModel, varSlop, my_data; contrasts=my_cake);
   end
 
 issingular(m_varyingSlope1)
