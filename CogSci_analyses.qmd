@@ -211,13 +211,13 @@ Zerocorr is mildly better. Will proceed using pred_visExplore_3_zc.
 
 ### Model selection
 ```{julia}
-#| label: pred_visExplore_3_zc fitted with REML=true
+#| label: pred_visExplore_3_zc
 
 pred_visExplore_3_zc = let
-    formula = @formula(distance_to_spaceship ~ 1 + N_visible_obstacles + input_noise 
+    formula = @formula(log(distance_to_spaceship) ~ 1 + N_visible_obstacles + input_noise 
     + zerocorr(1 + N_visible_obstacles | N_visible_drift_tiles)
     + zerocorr(1 + N_visible_obstacles | ID));
-    fit(MixedModel, formula, all_fixations; contrasts=hypothesis_coding, REML=true);
+    fit(MixedModel, formula, all_fixations; contrasts=hypothesis_coding);
   end
 
 issingular(pred_visExplore_3_zc) # NOT overparameterized
@@ -267,8 +267,13 @@ Results:
 - input_noise:weak vs. none [-0.308427, -0.103417]
 - input_noise:strong vs. weak [0.374834, 0.586183]
 
+on log-scale:
+- N_visible_obstacles [ -0.0279565, 0.025624] X no effect
+- input_noise:weak vs. none [-0.0358762, -0.0075744]
+- input_noise:strong vs. weak [0.000408187, 0.0299594]
+
 **Modeling spatial allocation of distant fixations**
-Only including fixations that are 4 visual degrees away from spaceship.
+Only including fixations that are 5 visual degrees away from spaceship.
 
 ## Modeling distance to spaceship
 ```{julia}
@@ -312,13 +317,13 @@ issingular(pred_distAgent_3)  # overparameterized
 
 ### Model selection
 ```{julia}
-#| label: pred_distAgent_1 fitted with REML=true
+#| label: pred_distAgent_1
 
 pred_distAgent_1 = let
-    formula = @formula(distance_to_spaceship ~ 1 + N_visible_obstacles + input_noise 
+    formula = @formula(log(distance_to_spaceship) ~ 1 + N_visible_obstacles + input_noise 
     + (1 | N_visible_drift_tiles)
     + (1 | ID));
-    fit(MixedModel, formula, my_data; contrasts=my_cake, REML=true);
+    fit(MixedModel, formula, my_data; contrasts=my_cake);
   end
 
 issingular(pred_distAgent_1) # NOT overparameterized
@@ -343,6 +348,11 @@ Results:
 - N_visible_obstacles [-0.116628, -0.0822677]
 - input_noise:weak vs. none [-0.435594, -0.15973]
 - input_noise:strong vs. weak [0.4511, 0.73566]
+
+on log-scale:
+- N_visible_obstacles [-0.012224, -0.0100155]
+- input_noise:weak vs. none [-0.0340066, -0.0163282]
+- input_noise:strong vs. weak [0.0288485, 0.0470953]
 
 ## Modeling distance to nearest obstacle
 Here we have to control for variance caused by the varying number of obstacles on screen. We will therefore enter N_visible_obstacles as random intercept into the model.
@@ -376,14 +386,14 @@ issingular(pred_distObstacle_2)  # overparameterized
 
 ### Model selection
 ```{julia}
-#| label: pred_distObstacle_1 fitted with REML=true
+#| label: pred_distObstacle_1
 
 pred_distObstacle_1 = let
     formula = @formula(log(Dist_to_closest_obstacles) ~ 1 + input_noise
     + (1 | N_visible_obstacles) 
     + (1 | N_visible_drift_tiles)
     + (1 | ID));
-    fit(MixedModel, formula, my_data; contrasts=my_cake, REML=true);
+    fit(MixedModel, formula, my_data; contrasts=my_cake);
   end
 
 issingular(pred_distObstacle_1)  # NOT overparameterized
@@ -406,7 +416,7 @@ No random slopes specified...
 ### Bootstrapping
 ```{julia}
 samples_predDistObs = parametricbootstrap(RNG, N_iterations, pred_distObstacle_1)
-tbl = samples.tbl
+tbl = samples_predDistObs.tbl
 ```
 
 Let's first take a look into the bounds
@@ -556,12 +566,12 @@ Stating zerocorr is favored by BIC (and AIC). Proceed with pred_fixDur_3_zc.
 
 ### Model selection
 ```{julia}
-#| label: pred_fixDur_3_zc fitted with REML=true
+#| label: pred_fixDur_3_zc
 
 pred_fixDur_3_zc = let
     formula = @formula(log(fixation_duration) ~ 1 + N_visible_obstacles + input_noise + drift_tile_onset
     + zerocorr(1 + N_visible_obstacles | ID));
-    fit(MixedModel, formula, my_data; contrasts=my_cake, REML=true);
+    fit(MixedModel, formula, my_data; contrasts=my_cake);
   end
 
 issingular(pred_fixDur_3_zc)  # NOT overparameterized
