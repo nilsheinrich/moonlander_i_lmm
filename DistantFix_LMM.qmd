@@ -329,11 +329,11 @@ m_varyingSlope_complex_zc is still favored by BIC (or AIC). Therefore proceeding
 
 ## Model selection
 ```{julia}
-#| label: m_varyingSlope_complex_zc fitted with REML=true
+#| label: m_varyingSlope_complex_zc
 
 m_varyingSlope_complex_zc = let
     formula = @formula(log(fixation_duration) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + zerocorr(1 + N_visible_obstacles * N_visible_drift_tiles + input_noise | ID));
-    fit(MixedModel, formula, my_data; contrasts=my_cake, REML=true);
+    fit(MixedModel, formula, my_data; contrasts=my_cake);
   end
 
 issingular(m_varyingSlope_complex_zc)
@@ -412,7 +412,7 @@ plt = data(tbl) * mapping(
 draw(plt; figure=(;supertitle="Parametric bootstrap β estimates of variance components"))
 ```
 
-**Discussing the results:** Only **N_visible_obstacles** affetcs the fixation duration in distant fixations (0.00617624, 0.0220704).
+**Discussing the results:** Only **N_visible_obstacles** affetcs the fixation duration in distant fixations (0.00333352, 0.0183757).
 
 # Modeling fixation location - distance to spaceship
 
@@ -632,11 +632,11 @@ BIC favors model m_varyingSlope_complex_ni. We'll stick with this one.
 
 ## Model selection
 ```{julia}
-#| label: m_varyingSlope_complex_ni fitted with REML=true
+#| label: m_varyingSlope_complex_ni
 
 m_varyingSlope_complex_ni = let
     formula = @formula(distance_to_spaceship ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + (1 + N_visible_obstacles + N_visible_drift_tiles + input_noise | ID));
-    fit(MixedModel, formula, my_data; contrasts=my_cake, REML=true);
+    fit(MixedModel, formula, my_data; contrasts=my_cake);
   end
 
 issingular(m_varyingSlope_complex_ni) # NOT overparameterized
@@ -697,7 +697,7 @@ Calling confint will give you the bounds, when visually it might be hard to veri
 ```{julia}
 confint(samples)
 ```
-**N_visible_obstacles** and the **interaction** term of it and  **N_visible_drift_tiles** are significant.
+**N_visible_obstacles** is significant.
 
 Now let's plot the bounds (without intercept) to visualize when 0 is within the bounds (meaning no significance). It's basically the plot above for the beta estimates but every estimate gets its own row, which makes it easier to read.
 ```{julia}
@@ -714,7 +714,7 @@ draw(plt; figure=(;supertitle="Parametric bootstrap β estimates of variance com
 ```
 95% CI is not intersecting with x=0-line.
 
-We find **no** significance for either level of input noise. We however find that **N_visible_obstacles** is significantly **decreasing** distance to the spaceship within exploring fixations (-0.133784, -0.0334897) and that N_visible_obstacles and N_visible_drift_tiles negatively **interact** with each other (-0.0887903, -0.0144909). The interaction effect tells us that the effect of N_visible_obstacles depends on the level of N_visible_drift_tiles and vice versa. 
+We find **no** significance for either level of input noise. We however find that **N_visible_obstacles** is significantly **decreasing** distance to the spaceship within exploring fixations (-0.139299, -0.0431337). No interaction effect found.
 
 # Modeling fixation location - distance to closest obstacle
 Controlling for the number of visible obstacles.
@@ -875,13 +875,13 @@ Referrin to BIC, the zerocorr model wins (not when referring to AIC though). We 
 
 ## Model selection
 ```{julia}
-#| label: m_varyingSlope_d_zc fitted with REML
+#| label: m_varyingSlope_d_zc
 
 m_varyingSlope_d_zc = let
     formula = @formula(log(Dist_to_closest_obstacles) ~ 1 + N_visible_drift_tiles + input_noise 
     + zerocorr(1 + N_visible_drift_tiles | ID) 
     + zerocorr(1 + N_visible_drift_tiles | N_visible_obstacles));
-    fit(MixedModel, formula, my_data; contrasts=my_cake, REML=true);
+    fit(MixedModel, formula, my_data; contrasts=my_cake);
   end
 
 issingular(m_varyingSlope_d_zc) # NOT overparameterized
@@ -938,4 +938,4 @@ draw(plt; figure=(;supertitle="Parametric bootstrap β estimates of variance com
 ridgeplot(samples; show_intercept=false, xlabel="Bootstrap density and 95%CI", title="Distance to closest obstacle (distant fixations)")
 ```
 
-**N_visible_drift_tiles** significantly increases the distance to the closest obstacle in distant fixations (0.0281533, 0.0789406). Either level of input noise has no effect on the predicted variable.
+**N_visible_drift_tiles** significantly increases the distance to the closest obstacle in distant fixations (0.0234815, 0.0762633). Either level of input noise has no effect on the predicted variable.
