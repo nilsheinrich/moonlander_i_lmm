@@ -52,7 +52,8 @@ const AoG = AlgebraOfGraphics;
 my_data = DataFrame(Arrow.Table("data/Experiment1_DistantFixations.arrow"))
 my_data = dropmissing(my_data, [:N_visible_obstacles, :N_visible_drift_tiles])
 
-# Filtering saccades with no amplitude
+# Filtering fixations with duration less than 25 samples
+# fixdur >= 0.0125
 my_data = my_data[(my_data.fixation_duration .>= 0.06), :]
 
 describe(my_data)
