@@ -45,47 +45,10 @@ N_iterations = 10000
 const AoG = AlgebraOfGraphics;
 ```
 
-# Data
-```{julia}
-#| label: data
+# Modeling visual exploration
+Visual exploration might reflect exploring the action field (Kahl et al., 2022) that consists of perceived action possibilities (Gibson, 1966). We hypothesize that the visual environment is explored in a smaller radius when motor control efficiency is reduced. Therefore we will feed *all* fixations in a model predicting distance to agent that includes input noise as categorical covariate (and N_visible_obstacles as numerical covariate).
 
-my_data = DataFrame(Arrow.Table("data/Experiment1_DistantFixations.arrow"))
-my_data = dropmissing(my_data, [:N_visible_obstacles, :N_visible_drift_tiles])
-
-# Filtering fixations with duration less than 25 samples
-# fixdur >= 0.0125
-my_data = my_data[(my_data.fixation_duration .>= 0.06), :]
-
-describe(my_data)
-#size(my_data)  # 42315 rows
-```
-
-## Contrasts
-We will declare **N_visible_drift_tiles*** as grouping variable to exclude variance caused by the visual environment. **ID** and **total_control_loss** are also grouping variables that will be explored.
-We specify the contrasts for **input_noise**.
-
-#### Hypothesis Coding
-```{julia}
-my_cake = Dict(
-  :ID => Grouping(),
-  :total_control_loss => Grouping(),
-  :N_visible_drift_tiles => Grouping(),
-  :input_noise => HypothesisCoding(
-    [
-      -1 +1 0
-      0 -1 +1
-    ];
-    levels=["N", "W", "S"],
-    labels=["weak-none", "strong-weak"],
-  ),
-);
-```
-
-# Code book
-
-## Modeling visual exploration
-Visual exploration might reflect exploring the action field (Kahl et al., 2021) that consists of perceived action possibilities (affordances; Gibson, 1966). We hypothesize that the visual environment is explored in a smaller radius when motor control efficiency is reduced. Therefore we will feed *all* fixations in a model predicting distance to agent that includes input noise (and N_visible_obstacles) as categorical covariate.
-
+## Data
 ```{julia}
 #| label: data
 
@@ -273,8 +236,44 @@ on log-scale:
 - input_noise:weak vs. none [-0.0358762, -0.0075744]
 - input_noise:strong vs. weak [0.000408187, 0.0299594]
 
-**Modeling spatial allocation of distant fixations**
+# Modeling spatial allocation of distant fixations
 Only including fixations that are 5 visual degrees away from spaceship.
+
+## Data
+```{julia}
+#| label: data
+
+my_data = DataFrame(Arrow.Table("data/Experiment1_DistantFixations.arrow"))
+my_data = dropmissing(my_data, [:N_visible_obstacles, :N_visible_drift_tiles])
+
+# Filtering fixations with duration less than 25 samples
+# fixdur >= 0.0125
+my_data = my_data[(my_data.fixation_duration .>= 0.06), :]
+
+describe(my_data)
+#size(my_data)  # 42315 rows
+```
+
+### Contrasts
+We will declare **N_visible_drift_tiles*** as grouping variable to exclude variance caused by the visual environment. **ID** and **total_control_loss** are also grouping variables that will be explored.
+We specify the contrasts for **input_noise**.
+
+### Hypothesis Coding
+```{julia}
+my_cake = Dict(
+  :ID => Grouping(),
+  :total_control_loss => Grouping(),
+  :N_visible_drift_tiles => Grouping(),
+  :input_noise => HypothesisCoding(
+    [
+      -1 +1 0
+      0 -1 +1
+    ];
+    levels=["N", "W", "S"],
+    labels=["weak-none", "strong-weak"],
+  ),
+);
+```
 
 ## Modeling distance to spaceship
 ```{julia}
