@@ -1,0 +1,80 @@
+---
+title: "boxcox_analysis"
+author: "Nils Wendel Heinrich"
+date: "2024-06-26"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r packages, include=FALSE}
+library(tidyverse)
+library(dplyr)
+library(arrow)
+library(MASS)
+
+```
+
+```{r data, include=FALSE}
+
+setwd('/Users/heinrich/Projects/Moonlander_i_LMM/')
+
+close_fixations <- read_feather("data/Experiment1_CloseFixations.arrow")
+distant_fixations <- read_feather("data/Experiment1_DistantFixations.arrow")
+
+close_fixations <- filter(close_fixations, fixation_duration > 0)
+distant_fixations <- filter(distant_fixations, fixation_duration > 0)
+
+```
+
+```{r box_cox_close_fixDur, include=FALSE}
+
+boxcox(lm(close_fixations$fixation_duration ~ 1))
+
+```
+lambda, the estimated value is near to 0, implies log transform.
+```{r close_dist_transform, include=FALSE}
+
+close_fixations$fixation_duration.log <- log(close_fixations$fixation_duration)
+
+```
+
+
+```{r box_cox_close_dist, include=FALSE}
+
+boxcox(lm(close_fixations$distance_to_spaceship ~ 1))
+
+```
+lambda, the estimated value is near to 1, implies NO transformation.
+
+```{r box_cox_distant_fixDur, include=FALSE}
+
+boxcox(lm(distant_fixations$fixation_duration ~ 1))
+
+```
+lambda, the estimated value is near to 0, implies log transform.
+```{r distant_fixDur_transform, include=FALSE}
+
+distant_fixations$fixation_duration.log <- log(distant_fixations$fixation_duration)
+
+```
+
+```{r box_cox_distant_dist, include=FALSE}
+
+boxcox(lm(distant_fixations$distance_to_spaceship ~ 1))
+
+```
+lambda, the estimated value is near to -1, implies 1/x transformation.
+
+```{r box_cox_distant_dist, include=FALSE}
+
+boxcox(lm(distant_fixations$Dist_to_closest_obstacles ~ 1))
+
+```
+lambda, the estimated value is near to 0, implies log transform.
+
+
+
+
