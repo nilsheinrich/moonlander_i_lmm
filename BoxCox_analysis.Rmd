@@ -35,6 +35,7 @@ boxcox(lm(close_fixations$fixation_duration ~ 1))
 
 ```
 lambda, the estimated value is near to 0, implies log transform.
+
 ```{r close_dist_transform, include=FALSE}
 
 close_fixations$fixation_duration.log <- log(close_fixations$fixation_duration)
@@ -44,7 +45,9 @@ close_fixations$fixation_duration.log <- log(close_fixations$fixation_duration)
 
 ```{r box_cox_close_dist, include=FALSE}
 
-boxcox(lm(close_fixations$distance_to_spaceship ~ 1))
+Lambda <- boxcox(lm(close_fixations$distance_to_spaceship ~ 1))
+
+Lambda$x[which(Lambda$y == max(Lambda$y))]
 
 ```
 lambda, the estimated value is near to 1, implies NO transformation.
@@ -55,6 +58,7 @@ boxcox(lm(distant_fixations$fixation_duration ~ 1))
 
 ```
 lambda, the estimated value is near to 0, implies log transform.
+
 ```{r distant_fixDur_transform, include=FALSE}
 
 distant_fixations$fixation_duration.log <- log(distant_fixations$fixation_duration)
@@ -63,7 +67,9 @@ distant_fixations$fixation_duration.log <- log(distant_fixations$fixation_durati
 
 ```{r box_cox_distant_dist, include=FALSE}
 
-boxcox(lm(distant_fixations$distance_to_spaceship ~ 1))
+Lambda <- boxcox(lm(distant_fixations$distance_to_spaceship ~ 1))
+
+Lambda$x[which(Lambda$y == max(Lambda$y))]
 
 ```
 lambda, the estimated value is near to -1, implies 1/x transformation.
