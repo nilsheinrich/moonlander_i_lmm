@@ -66,7 +66,7 @@ my_data = dropmissing(my_data, [:N_visible_obstacles, :N_visible_drift_tiles])
 
 # Filtering fixations with duration less than 25 samples
 # fixdur >= 0.0125
-my_data = my_data[(my_data.fixation_duration .>= 0.06), :]
+my_data = my_data[(my_data.fixation_duration .>= 0.0125), :]  # 0.06
 
 describe(my_data)
 ```
@@ -160,15 +160,14 @@ gof_summary = let
 end
 
 ```
-The complex model without the interaction (m_varyingSlope_complex_ni) is favored when referring to BIC (not AIC) though.
+The complex model with the interaction (m_varyingSlope_complex) is favored when referring to BIC (or AIC).
 
 Build the complex model but without correlations between random effects.
 ```{julia}
 #| label: m_varyingSlope_complex_zc
 
 m_varyingSlope_complex_zc = let
-    formula = @formula(log(fixation_duration) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + 
-    zerocorr(1 + N_visible_obstacles * N_visible_drift_tiles + input_noise | ID));
+    formula = @formula(log(fixation_duration) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + zerocorr(1 + N_visible_obstacles * N_visible_drift_tiles + input_noise | ID));
     fit(MixedModel, formula, my_data; contrasts=my_cake);
   end
 
@@ -179,9 +178,9 @@ issingular(m_varyingSlope_complex_zc)
 ```{julia}
 
 gof_summary = let
-  nms = [:m_varyingSlope_complex_ni, :m_varyingSlope_complex_zc]
+  nms = [:m_varyingSlope_complex, :m_varyingSlope_complex_zc]
   mods = eval.(nms)
-  lrt = MixedModels.likelihoodratiotest(m_varyingSlope_complex_ni, m_varyingSlope_complex_zc)
+  lrt = MixedModels.likelihoodratiotest(m_varyingSlope_complex, m_varyingSlope_complex_zc)
   DataFrame(;
     name = nms, 
     dof=dof.(mods),
@@ -205,8 +204,7 @@ leaving out input noise completely:
 #| label: m_varyingSlope1
 
 m_varyingSlope1 = let
-    formula = @formula(log(fixation_duration) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + 
-    zerocorr(1 + N_visible_obstacles * N_visible_drift_tiles | ID));
+    formula = @formula(log(fixation_duration) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + zerocorr(1 + N_visible_obstacles * N_visible_drift_tiles | ID));
     fit(MixedModel, formula, my_data; contrasts=my_cake);
   end
 
@@ -239,8 +237,7 @@ Leaving out N_visible_drift_tiles instead:
 #| label: m_varyingSlope2
 
 m_varyingSlope2 = let
-    formula = @formula(log(fixation_duration) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + 
-    zerocorr(1 + N_visible_obstacles + input_noise | ID));
+    formula = @formula(log(fixation_duration) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + zerocorr(1 + N_visible_obstacles + input_noise | ID));
     fit(MixedModel, formula, my_data; contrasts=my_cake);
   end
 
@@ -274,8 +271,7 @@ Leaving out N_visible_obstacles:
 #| label: m_varyingSlope3
 
 m_varyingSlope3 = let
-    formula = @formula(log(fixation_duration) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + 
-    zerocorr(1 + N_visible_drift_tiles + input_noise | ID));
+    formula = @formula(log(fixation_duration) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + zerocorr(1 + N_visible_drift_tiles + input_noise | ID));
     fit(MixedModel, formula, my_data; contrasts=my_cake);
   end
 
@@ -310,8 +306,7 @@ m_varyingSlope_complex_zc is still favored by BIC (or AIC). Therefore proceeding
 #| label: m_varyingSlope_complex_zc
 
 m_varyingSlope_complex_zc = let
-    formula = @formula(log(fixation_duration) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + 
-    zerocorr(1 + N_visible_obstacles * N_visible_drift_tiles + input_noise | ID));
+    formula = @formula(log(fixation_duration) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + zerocorr(1 + N_visible_obstacles * N_visible_drift_tiles + input_noise | ID));
     fit(MixedModel, formula, my_data; contrasts=my_cake);
   end
 
@@ -391,7 +386,7 @@ plt = data(tbl) * mapping(
 draw(plt; figure=(;supertitle="Parametric bootstrap β estimates of variance components"))
 ```
 
-**Discussing the results:** Only **N_visible_obstacles** affects the fixation duration in distant fixations (0.00303191, 0.0179888).
+**Discussing the results:** Only **N_visible_obstacles** affects (increases) the fixation duration in distant fixations (0.00313553, 0.0245407).
 
 # Modeling fixation location - distance to spaceship
 
@@ -414,8 +409,7 @@ starting with the most complex model.
 #| label: m_varyingSlope_complex
 
 m_varyingSlope_complex = let
-    formula = @formula(1/distance_to_spaceship ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + 
-    (1 + N_visible_obstacles * N_visible_drift_tiles + input_noise | ID));
+    formula = @formula(1/distance_to_spaceship ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + (1 + N_visible_obstacles * N_visible_drift_tiles + input_noise | ID));
     fit(MixedModel, formula, my_data; contrasts=my_cake);
   end
 
@@ -466,15 +460,14 @@ gof_summary = let
 end
 
 ```
-The model with interaction wins out slightly when referring to BIC (even more with AIC though). Proceeding with m_varyingSlope_complex.
+The model with interaction wins out slightly when referring to BIC (or AIC). Proceeding with m_varyingSlope_complex.
 
 Stating zero correlation between random effects
 ```{julia}
 #| label: m_varyingSlope_complex_zc
 
 m_varyingSlope_complex_zc = let
-    formula = @formula(1/distance_to_spaceship ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + 
-    zerocorr(1 + N_visible_obstacles * N_visible_drift_tiles + input_noise | ID));
+    formula = @formula(1/distance_to_spaceship ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + zerocorr(1 + N_visible_obstacles * N_visible_drift_tiles + input_noise | ID));
     fit(MixedModel, formula, my_data; contrasts=my_cake);
   end
 
@@ -510,8 +503,7 @@ Deleting input noise
 #| label: m_varyingSlope1
 
 m_varyingSlope1 = let
-    formula = @formula(1/distance_to_spaceship ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + 
-    zerocorr(1 + N_visible_obstacles * N_visible_drift_tiles | ID));
+    formula = @formula(1/distance_to_spaceship ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + zerocorr(1 + N_visible_obstacles * N_visible_drift_tiles | ID));
     fit(MixedModel, formula, my_data; contrasts=my_cake);
   end
 
@@ -545,8 +537,7 @@ N_visible_drift_tiles and input_noise; kicking N_visible_obstacles out.
 #| label: m_varyingSlope2
 
 m_varyingSlope2 = let
-    formula = @formula(1/distance_to_spaceship ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + 
-    zerocorr(1 + N_visible_drift_tiles + input_noise | ID));
+    formula = @formula(1/distance_to_spaceship ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + zerocorr(1 + N_visible_drift_tiles + input_noise | ID));
     fit(MixedModel, formula, my_data; contrasts=my_cake);
   end
 
@@ -581,8 +572,7 @@ N_visible_obstacles and input_noise; leaving out N_visible_drift_tiles.
 #| label: m_varyingSlope3
 
 m_varyingSlope3 = let
-    formula = @formula(1/distance_to_spaceship ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + 
-    zerocorr(1 + N_visible_obstacles + input_noise | ID));
+    formula = @formula(1/distance_to_spaceship ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + zerocorr(1 + N_visible_obstacles + input_noise | ID));
     fit(MixedModel, formula, my_data; contrasts=my_cake);
   end
 
@@ -619,8 +609,7 @@ BIC favors model m_varyingSlope_complex_zc. We'll stick with this one.
 #| label: selected model
 
 m_varyingSlope_complex_zc = let
-    formula = @formula(1/distance_to_spaceship ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + 
-    zerocorr(1 + N_visible_obstacles * N_visible_drift_tiles + input_noise | ID));
+    formula = @formula(1/distance_to_spaceship ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + zerocorr(1 + N_visible_obstacles * N_visible_drift_tiles + input_noise | ID));
     fit(MixedModel, formula, my_data; contrasts=my_cake);
   end
 
@@ -698,7 +687,7 @@ draw(plt; figure=(;supertitle="Parametric bootstrap β estimates of variance com
 ```
 95% CI is not intersecting with x=0-line.
 
-We find **no** significance for either level of input noise. We see a significant effect for **N_visible_obstacles** (0.00085836, 0.00168293) and for the interaction term of **N_visible_obstacles*N_visible_drift_tiles** (0.000146243, 0.00130684).
+We find **no** significance for either level of input noise. We see a significant positive effect for **N_visible_obstacles** (0.00091143, 0.00179466).
 
 # Modeling fixation location - distance to closest obstacle
 Controlling for the number of visible obstacles.
@@ -923,4 +912,4 @@ draw(plt; figure=(;supertitle="Parametric bootstrap β estimates of variance com
 ridgeplot(samples; show_intercept=false, xlabel="Bootstrap density and 95%CI", title="Distance to closest obstacle (distant fixations)")
 ```
 
-**N_visible_drift_tiles** significantly increases the distance to the closest obstacle in distant fixations (0.0228692, 0.0763562). Either level of input noise has no effect on the predicted variable.
+**N_visible_drift_tiles** significantly increases the distance to the closest obstacle in distant fixations (0.0168428, 0.0716095). Either level of input noise has no effect on the predicted variable.
