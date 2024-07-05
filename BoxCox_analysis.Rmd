@@ -24,10 +24,10 @@ setwd('/Users/heinrich/Projects/Moonlander_i_LMM/')
 close_fixations <- read_feather("data/Experiment1_CloseFixations.arrow")
 distant_fixations <- read_feather("data/Experiment1_DistantFixations.arrow")
 
-close_fixations <- filter(close_fixations, fixation_duration > 0)
-distant_fixations <- filter(distant_fixations, fixation_duration > 0)
+close_fixations <- filter(close_fixations, fixation_duration >= 0.0125)
+distant_fixations <- filter(distant_fixations, fixation_duration >= 0.0125)
 #eliminating fixations that were definitely outside of game boarders
-distant_fixations <- filter(distant_fixations, distance_to_spaceship < 20)
+distant_fixations <- filter(distant_fixations, distance_to_spaceship < 16.63762484977781)
 
 ```
 
@@ -37,13 +37,6 @@ boxcox(lm(close_fixations$fixation_duration ~ 1))
 
 ```
 lambda, the estimated value is near to 0, implies log transform.
-
-```{r close_dist_transform, include=FALSE}
-
-close_fixations$fixation_duration.log <- log(close_fixations$fixation_duration)
-
-```
-
 
 ```{r box_cox_close_dist, include=FALSE}
 
