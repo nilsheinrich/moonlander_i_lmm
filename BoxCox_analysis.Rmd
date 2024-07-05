@@ -26,6 +26,8 @@ distant_fixations <- read_feather("data/Experiment1_DistantFixations.arrow")
 
 close_fixations <- filter(close_fixations, fixation_duration > 0)
 distant_fixations <- filter(distant_fixations, fixation_duration > 0)
+#eliminating fixations that were definitely outside of game boarders
+distant_fixations <- filter(distant_fixations, distance_to_spaceship < 20)
 
 ```
 
@@ -54,16 +56,12 @@ lambda, the estimated value is near to 1, implies NO transformation.
 
 ```{r box_cox_distant_fixDur, include=FALSE}
 
-boxcox(lm(distant_fixations$fixation_duration ~ 1))
+Lambda <- boxcox(lm(distant_fixations$fixation_duration ~ 1))
+
+Lambda$x[which(Lambda$y == max(Lambda$y))]
 
 ```
 lambda, the estimated value is near to 0, implies log transform.
-
-```{r distant_fixDur_transform, include=FALSE}
-
-distant_fixations$fixation_duration.log <- log(distant_fixations$fixation_duration)
-
-```
 
 ```{r box_cox_distant_dist, include=FALSE}
 
@@ -76,7 +74,9 @@ lambda, the estimated value is near to -1, implies 1/x transformation.
 
 ```{r box_cox_distant_dist, include=FALSE}
 
-boxcox(lm(distant_fixations$Dist_to_closest_obstacles ~ 1))
+Lambda <- boxcox(lm(distant_fixations$Dist_to_closest_obstacles ~ 1))
+
+Lambda$x[which(Lambda$y == max(Lambda$y))]
 
 ```
 lambda, the estimated value is near to 0, implies log transform.

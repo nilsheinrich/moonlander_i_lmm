@@ -604,6 +604,9 @@ Visualizing 95% CIs individually for every covariate.
 ```{julia}
 ridgeplot(samples; show_intercept=false, xlabel="Bootstrap density and 95%CI")
 ```
+Results:
+- **level_difficulty: hard & drift** -interaction is significant (-0.130991, -0.00859757). This tells us that the main effects of **level_difficulty: hard** and **drift** are interacting negatively with each other. But these aren't significant...
+
 
 # Predicting N_saccades
 
@@ -933,5 +936,7 @@ significant effects for:
 - level_difficulty: medium (-2.17203, p=0.0007)
 - input_noise: strong-weak (-0.83504, p<.00), not for weak-none (-0.207822, p=0.2924)
 - level_difficulty: hard & drift (-2.59284, p=0.0016), not for medium & drift (-1.09482, p=0.1913)
+
+ultimately **no** effect of drift on the predicted variable (-0.278706, p=0.7257)
 
 
