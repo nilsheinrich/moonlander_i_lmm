@@ -542,19 +542,19 @@ m_varyingSlope1 reached lowest BIC (and AIC). We will therefore proceed with dri
 ```{julia}
 #| label: m_varyingSlope1
 
-#m_varyingSlope1 = let
-#    varSlop = @formula(SoC ~ 1 + level_difficulty * drift + input_noise + N_fixations + N_saccades + N_consecutive_crash_success + 
-#    (1 + drift| ID) + 
-#    (1 | done));
-#    fit(MixedModel, varSlop, my_data; contrasts=my_cake);
-#  end
-
 m_varyingSlope1 = let
-    varSlop = @formula(SoC ~ 1 + level_difficulty * drift + input_noise + N_consecutive_crash_success + 
+    varSlop = @formula(SoC ~ 1 + level_difficulty * drift + input_noise + N_fixations + N_saccades + N_consecutive_crash_success + 
     (1 + drift| ID) + 
     (1 | done));
     fit(MixedModel, varSlop, my_data; contrasts=my_cake);
   end
+
+#m_varyingSlope1 = let
+#    varSlop = @formula(SoC ~ 1 + level_difficulty * drift + input_noise + #N_consecutive_crash_success + 
+#    (1 + drift| ID) + 
+#    (1 | done));
+#    fit(MixedModel, varSlop, my_data; contrasts=my_cake);
+#  end
 
 issingular(m_varyingSlope1)
 
@@ -576,15 +576,15 @@ ridgeplot(samples; show_intercept=false, xlabel="Bootstrap density and 95%CI", t
 
 **Discussing the results:** We find significant effects for (stating 95% CIs):
 
-### with N_fixations & N_saccades:
+### with N_fixations & N_saccades **PAPER**:
 - level_difficulty: hard (-0.642159, -0.23268), not medium though
 - drift did **not** ultimately reach significance (-0.535484, 0.0266281).
 - input_noise: strong vs. weak (-0.459791, -0.21568), not weak vs. none though
-- N_fixations (0.00043501, 0.00196481), not for N_saccades though
+- N_fixations (0.00043501, 0.00196481)
 - N_consecutive_crash_success (0.0123833, 0.0409701)
 - ld: hard * drift (-0.971484, -0.42742), no significance for ld: medium * drift
 
-### without N_fixations & N_saccades **PAPER**:
+### without N_fixations & N_saccades:
 - level_difficulty: hard (-0.639921, -0.225046), not medium though
 - drift did **not** ultimately reach significance (-0.367976, 0.0402688).
 - input_noise: strong vs. weak (-0.463515, -0.217886), not weak vs. none though (-0.0809001, 0.168251)
