@@ -948,3 +948,195 @@ ridgeplot(samples; show_intercept=false, xlabel="Bootstrap density and 95%CI", t
 ```
 
 **N_visible_drift_tiles** significantly increases the distance to the closest obstacle in distant fixations (0.00119341, 0.0733309).
+
+
+# Modeling horizontal-only distance to spaceship
+Not focusing on the time horizon of action goals but rather how many motor actions are needed to implement the action goal, solely testing the horizontal distance to the spaceship should give hints towards the planning of motor action in response to environmental features drift & input noise.
+
+```{julia}
+#| label: data
+
+my_data = DataFrame(Arrow.Table("data/Experiment1_DistantFixations_test.arrow"))
+my_data = dropmissing(my_data, [:N_visible_obstacles, :N_visible_drift_tiles])
+
+# Filtering fixations with duration less than 25 samples
+# fixdur >= 0.0125
+my_data = my_data[(my_data.fixation_duration .>= 0.0125), :]  # 0.06
+#eliminating fixations outside of game boarders
+my_data = my_data[(my_data.distance_to_spaceship .< 16.63762484977781), :]
+
+describe(my_data)
+```
+
+### Contrasts
+
+We will declare **ID** as a grouping variable as well as define the effects coding for the discrete covariate input noise.
+
+#### Hypothesis Coding
+```{julia}
+my_cake = Dict(
+  :ID => Grouping(),
+  :input_noise => HypothesisCoding(
+    [
+      -1 +1 0
+      0 -1 +1
+    ];
+    levels=["N", "W", "S"],
+    labels=["weak-none", "strong-weak"],
+  ),
+);
+```
+
+Box-Cox suggests log transform
+```{julia}
+#| label: m_1
+
+m_1 = let
+    formula = @formula(log(horizontal_distance_to_spaceship) ~ 1 + N_visible_obstacles + N_visible_drift_tiles + input_noise 
+    + (1 | ID));
+    fit(MixedModel, formula, my_data; contrasts=my_cake);
+  end
+
+issingular(m_1) # NOT overparameterized
+
+```
+
+```{julia}
+#| label: m_complex
+
+m_complex = let
+    formula = @formula(log(horizontal_distance_to_spaceship) ~ 1 + N_visible_obstacles + N_visible_drift_tiles + input_noise 
+    + (1 + N_visible_obstacles + N_visible_drift_tiles + input_noise | ID));
+    fit(MixedModel, formula, my_data; contrasts=my_cake);
+  end
+
+issingular(m_complex) # NOT overparameterized
+
+```
+
+```{julia}
+#| label: m_2
+
+m_2 = let
+    formula = @formula(log(horizontal_distance_to_spaceship) ~ 1 + N_visible_obstacles + N_visible_drift_tiles + input_noise 
+    + (1 + N_visible_obstacles + N_visible_drift_tiles | ID));
+    fit(MixedModel, formula, my_data; contrasts=my_cake);
+  end
+
+issingular(m_2) # NOT overparameterized
+
+```
+
+```{julia}
+
+gof_summary = let
+  nms = [:m_complex, :m_2]
+  mods = eval.(nms)
+  lrt = MixedModels.likelihoodratiotest(m_complex, m_2)
+  DataFrame(;
+    name = nms, 
+    dof=dof.(mods),
+    deviance=round.(deviance.(mods), digits=0),
+    AIC=round.(aic.(mods),digits=0),
+    AICc=round.(aicc.(mods),digits=0),
+    BIC=round.(bic.(mods),digits=0),
+    χ²=vcat(:., round.(lrt.tests.deviancediff, digits=0)),
+    χ²_dof=vcat(:., round.(lrt.tests.dofdiff, digits=0)),
+    pvalue=vcat(:., round.(lrt.tests.pvalues, digits=3))
+  )
+end
+
+```
+m_complex is better.
+
+```{julia}
+#| label: m_3
+
+m_3 = let
+    formula = @formula(log(horizontal_distance_to_spaceship) ~ 1 + N_visible_obstacles + N_visible_drift_tiles + input_noise 
+    + (1 + N_visible_obstacles + input_noise | ID));
+    fit(MixedModel, formula, my_data; contrasts=my_cake);
+  end
+
+issingular(m_3) # NOT overparameterized
+
+```
+
+```{julia}
+
+gof_summary = let
+  nms = [:m_complex, :m_3]
+  mods = eval.(nms)
+  lrt = MixedModels.likelihoodratiotest(m_complex, m_3)
+  DataFrame(;
+    name = nms, 
+    dof=dof.(mods),
+    deviance=round.(deviance.(mods), digits=0),
+    AIC=round.(aic.(mods),digits=0),
+    AICc=round.(aicc.(mods),digits=0),
+    BIC=round.(bic.(mods),digits=0),
+    χ²=vcat(:., round.(lrt.tests.deviancediff, digits=0)),
+    χ²_dof=vcat(:., round.(lrt.tests.dofdiff, digits=0)),
+    pvalue=vcat(:., round.(lrt.tests.pvalues, digits=3))
+  )
+end
+
+```
+m_complex is still better.
+
+```{julia}
+#| label: m_4
+
+m_4 = let
+    formula = @formula(log(horizontal_distance_to_spaceship) ~ 1 + N_visible_obstacles + N_visible_drift_tiles + input_noise 
+    + (1 + N_visible_drift_tiles + input_noise | ID));
+    fit(MixedModel, formula, my_data; contrasts=my_cake);
+  end
+
+issingular(m_4) # NOT overparameterized
+
+```
+
+```{julia}
+
+gof_summary = let
+  nms = [:m_complex, :m_4]
+  mods = eval.(nms)
+  lrt = MixedModels.likelihoodratiotest(m_complex, m_4)
+  DataFrame(;
+    name = nms, 
+    dof=dof.(mods),
+    deviance=round.(deviance.(mods), digits=0),
+    AIC=round.(aic.(mods),digits=0),
+    AICc=round.(aicc.(mods),digits=0),
+    BIC=round.(bic.(mods),digits=0),
+    χ²=vcat(:., round.(lrt.tests.deviancediff, digits=0)),
+    χ²_dof=vcat(:., round.(lrt.tests.dofdiff, digits=0)),
+    pvalue=vcat(:., round.(lrt.tests.pvalues, digits=3))
+  )
+end
+
+```
+m_complex is still still better.
+
+Taking a look at selected model:
+```{julia}
+m_complex
+```
+
+```{julia}
+samples = parametricbootstrap(RNG, N_iterations, m_complex)
+tbl = samples.tbl
+```
+
+Let's first take a look into the bounds
+```{julia}
+confint(samples)
+```
+
+```{julia}
+ridgeplot(samples; show_intercept=false, xlabel="Bootstrap density and 95%CI", title="Horizontal-only Distance to Spaceship")
+```
+
+### Discussing the results
+We find a single significant effect for the **N_visible_drift_tiles**. Any additional drift section on screen increases the horizontal distance to the spaceship (0.283584, 0.463759).
