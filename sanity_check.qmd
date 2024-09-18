@@ -251,14 +251,58 @@ ridgeplot(samples; show_intercept=false, xlabel="Bootstrap density and 95%CI")
 ```
 No significant effect found. N_fixations cannot be predicted with the covariates at hand.
 
-# Predicting ratio of distant fixations
+# Predicting prob of fixation to be distant
+
+```{julia}
+#| label: data
+
+my_data = DataFrame(Arrow.Table("data/Experiment1_AllFixations.arrow"))
+
+my_data = dropmissing(my_data, [:N_visible_obstacles, :N_visible_drift_tiles, :distance_to_spaceship])
+
+# Filtering fixations with duration less than 25 samples
+# fixdur >= 0.0125
+my_data = my_data[(my_data.fixation_duration .>= 0.0125), :]  # 0.06
+
+my_data = my_data[(my_data.distance_to_spaceship .< 16.63762484977781), :]
+
+describe(my_data)
+
+```
+
+#### predicted variable with 2 outcomes
+
+```{julia}
+#| label: binary_outcome_variable
+
+dist = Bernoulli()
+
+```
+
+#### Hypothesis Coding
+
+```{julia}
+my_cake = Dict(
+  :ID => Grouping(),
+  :input_noise => HypothesisCoding(
+    [
+      -1 +1 0
+      0 -1 +1
+    ];
+    levels=["N", "W", "S"],
+    labels=["weak-none", "strong-weak"],
+  ),
+);
+
+```
 
 ```{julia}
 #| label: m_varyingInt1
 
 m_varyingInt1 = let
-    formula = @formula(N_distant_fixations/N_fixations ~ 1 + level_difficulty * drift + input_noise + N_consecutive_crash_success + (1 | ID));
-    fit(MixedModel, formula, my_data; contrasts=my_cake);
+    formula = @formula(distant_fixation ~ 1 + N_visible_obstacles + N_visible_drift_tiles + input_noise 
+    + (1 | ID));
+    fit(MixedModel, formula, my_data, dist; contrasts=my_cake);
   end
 
 issingular(m_varyingInt1) # Not overparamterized
@@ -266,7 +310,7 @@ VarCorr(m_varyingInt1)
 last(m_varyingInt1.λ)
 
 ```
-ID is a suitable random effect. A huge portion of the total variance is caused by ID.
+ID is a suitable random intercept effect.
 
 ## Exploring random slope effects
 
@@ -275,84 +319,39 @@ Dumping all possible covariates in the random slope effects structure.
 #| label: m_varyingSlope_complex
 
 m_varyingSlope_complex = let
-    formula = @formula(N_distant_fixations/N_fixations ~ 1 + level_difficulty * drift + input_noise + N_consecutive_crash_success + (1 + level_difficulty * drift + input_noise + N_consecutive_crash_success | ID));
-    fit(MixedModel, formula, my_data; contrasts=my_cake);
+    formula = @formula(distant_fixation ~ 1 + N_visible_obstacles + N_visible_drift_tiles + input_noise 
+    + (1 + N_visible_obstacles + N_visible_drift_tiles + input_noise | ID));
+    fit(MixedModel, formula, my_data, dist; contrasts=my_cake);
   end
 
-issingular(m_varyingSlope_complex) # overparamterized
+issingular(m_varyingSlope_complex) # Not overparamterized
 
 ```
-We detect singularity. The first thing we can do to reduce complexity is eliminating the interaction term in the random slopes.
+That took a while, but it worked. We will now try to reduce model complexity.
 
-```{julia}
-#| label: m_varyingSlope_complex_ni
-
-m_varyingSlope_complex_ni = let
-    formula = @formula(N_distant_fixations/N_fixations ~ 1 + level_difficulty * drift + input_noise + N_consecutive_crash_success + (1 + level_difficulty + drift + input_noise + N_consecutive_crash_success | ID));
-    fit(MixedModel, formula, my_data; contrasts=my_cake);
-  end
-
-issingular(m_varyingSlope_complex_ni) # overparamterized
-
-```
-That didn't cut it. 
+### Models of reduced complexity
 
 Stating zerocorr
 ```{julia}
 #| label: m_varyingSlope_complex_zc
 
 m_varyingSlope_complex_zc = let
-    formula = @formula(N_distant_fixations/N_fixations ~ 1 + level_difficulty * drift + input_noise + N_consecutive_crash_success + 
-    zerocorr(1 + level_difficulty + drift + input_noise + N_consecutive_crash_success | ID));
-    fit(MixedModel, formula, my_data; contrasts=my_cake);
+    formula = @formula(distant_fixation ~ 1 + N_visible_obstacles + N_visible_drift_tiles + input_noise 
+    + zerocorr(1 + N_visible_obstacles + N_visible_drift_tiles + input_noise | ID));
+    fit(MixedModel, formula, my_data, dist; contrasts=my_cake);
   end
 
-issingular(m_varyingSlope_complex_zc) # overparamterized
-
-```
-Nope still singular. Starting to cut individual random slopes.
-
-Eliminated:
-- level_difficulty
-- input_noise (works)
-- drift
-- N_consecutive_crash_success
-
-```{julia}
-#| label: m_varyingSlope_complex
-
-m_varyingSlope_complex = let
-    formula = @formula(N_distant_fixations/N_fixations ~ 1 + level_difficulty * drift + input_noise + N_consecutive_crash_success + 
-    zerocorr(1 + level_difficulty + drift + N_consecutive_crash_success | ID));
-    fit(MixedModel, formula, my_data; contrasts=my_cake);
-  end
-
-issingular(m_varyingSlope_complex) # NOT overparamterized
+issingular(m_varyingSlope_complex_zc) # Not overparamterized
 
 ```
 
-Only when input_noise was not included in the random slopes, the model didn't show singularity. Including **level_difficulty + drift + N_consecutive_crash_success** is therefore our most complex model. Proceed from here
-
-Throwing out level_difficulty
-```{julia}
-#| label: m_varyingSlope1
-
-m_varyingSlope1 = let
-    formula = @formula(N_distant_fixations/N_fixations ~ 1 + level_difficulty * drift + input_noise + N_consecutive_crash_success + 
-    zerocorr(1 + drift + N_consecutive_crash_success | ID));
-    fit(MixedModel, formula, my_data; contrasts=my_cake);
-  end
-
-issingular(m_varyingSlope1) # NOT overparamterized
-
-```
-
+Throwing models against each other:
 ```{julia}
 
 gof_summary = let
-  nms = [:m_varyingSlope_complex, :m_varyingSlope1]
+  nms = [:m_varyingSlope_complex, :m_varyingSlope_complex_zc]
   mods = eval.(nms)
-  lrt = MixedModels.likelihoodratiotest(m_varyingSlope_complex, m_varyingSlope1)
+  lrt = MixedModels.likelihoodratiotest(m_varyingSlope_complex, m_varyingSlope_complex_zc)
   DataFrame(;
     name = nms, 
     dof=dof.(mods),
@@ -367,16 +366,52 @@ gof_summary = let
 end
 
 ```
-BIC (and AIC) favors neglecting level_difficulty as random slope. Proceeding with Slope1
+BIC (and AIC) favors stating zerocorr. We will thus proceed with zerocorr.
 
-Throwing out drift
+Throwing out N_obstacles
+```{julia}
+#| label: m_varyingSlope1
+
+m_varyingSlope1 = let
+    formula = @formula(distant_fixation ~ 1 + N_visible_obstacles + N_visible_drift_tiles + input_noise 
+    + zerocorr(1 + N_visible_drift_tiles + input_noise | ID));
+    fit(MixedModel, formula, my_data, dist; contrasts=my_cake);
+  end
+
+issingular(m_varyingSlope1)
+
+```
+
+```{julia}
+
+gof_summary = let
+  nms = [:m_varyingSlope_complex_zc, :m_varyingSlope1]
+  mods = eval.(nms)
+  lrt = MixedModels.likelihoodratiotest(m_varyingSlope_complex_zc, m_varyingSlope1)
+  DataFrame(;
+    name = nms, 
+    dof=dof.(mods),
+    deviance=round.(deviance.(mods), digits=0),
+    AIC=round.(aic.(mods),digits=0),
+    AICc=round.(aicc.(mods),digits=0),
+    BIC=round.(bic.(mods),digits=0),
+    χ²=vcat(:., round.(lrt.tests.deviancediff, digits=0)),
+    χ²_dof=vcat(:., round.(lrt.tests.dofdiff, digits=0)),
+    pvalue=vcat(:., round.(lrt.tests.pvalues, digits=3))
+  )
+end
+
+```
+N_visible_obstacles should be kept as random slope.
+
+Throwing out N_drift
 ```{julia}
 #| label: m_varyingSlope2
 
 m_varyingSlope2 = let
-    formula = @formula(N_distant_fixations/N_fixations ~ 1 + level_difficulty * drift + input_noise + N_consecutive_crash_success + 
-    zerocorr(1 + level_difficulty + N_consecutive_crash_success | ID));
-    fit(MixedModel, formula, my_data; contrasts=my_cake);
+    formula = @formula(distant_fixation ~ 1 + N_visible_obstacles + N_visible_drift_tiles + input_noise 
+    + zerocorr(1 + N_visible_obstacles + input_noise | ID));
+    fit(MixedModel, formula, my_data, dist; contrasts=my_cake);
   end
 
 issingular(m_varyingSlope2) # NOT overparamterized
@@ -386,9 +421,9 @@ issingular(m_varyingSlope2) # NOT overparamterized
 ```{julia}
 
 gof_summary = let
-  nms = [:m_varyingSlope1, :m_varyingSlope2]
+  nms = [:m_varyingSlope_complex_zc, :m_varyingSlope2]
   mods = eval.(nms)
-  lrt = MixedModels.likelihoodratiotest(m_varyingSlope1, m_varyingSlope2)
+  lrt = MixedModels.likelihoodratiotest(m_varyingSlope_complex_zc, m_varyingSlope2)
   DataFrame(;
     name = nms, 
     dof=dof.(mods),
@@ -403,29 +438,28 @@ gof_summary = let
 end
 
 ```
-Slope2 wins in terms of BIC (and AIC). Proceeding with m_varyingSlope2.
+N_visible_drift_tiles should also be kept...
 
-Throwing out N_consecutive_crash_success.
+Throwing out input_noise.
 ```{julia}
 #| label: m_varyingSlope3
 
 m_varyingSlope3 = let
-    formula = @formula(N_distant_fixations/N_fixations ~ 1 + level_difficulty * drift + input_noise + N_consecutive_crash_success + 
-    zerocorr(1 + level_difficulty + drift | ID));
-    fit(MixedModel, formula, my_data; contrasts=my_cake);
+    formula = @formula(distant_fixation ~ 1 + N_visible_obstacles + N_visible_drift_tiles + input_noise 
+    + zerocorr(1 + N_visible_obstacles + N_visible_drift_tiles | ID));
+    fit(MixedModel, formula, my_data, dist; contrasts=my_cake);
   end
 
 issingular(m_varyingSlope3) # NOT overparamterized
 
 ```
 
-We cannot throw Slope3 against Slope2 because the test would have a resulting Chisq of =0. But we can test it against Slope1:
 ```{julia}
 
 gof_summary = let
-  nms = [:m_varyingSlope3, :m_varyingSlope1]
+  nms = [:m_varyingSlope_complex_zc, :m_varyingSlope3]
   mods = eval.(nms)
-  lrt = MixedModels.likelihoodratiotest(m_varyingSlope3, m_varyingSlope1)
+  lrt = MixedModels.likelihoodratiotest(m_varyingSlope_complex_zc, m_varyingSlope3)
   DataFrame(;
     name = nms, 
     dof=dof.(mods),
@@ -440,288 +474,25 @@ gof_summary = let
 end
 
 ```
-And Slope1 wins. But Slope1 looses against Slope2. We can therefore infer that Slope2 is the best fitting model. We will now proceed with keeping only **single random slope effects**.
-
-Keeping only level_difficulty:
-```{julia}
-#| label: m_varyingSlope_simple1
-
-m_varyingSlope_simple1 = let
-    formula = @formula(N_distant_fixations/N_fixations ~ 1 + level_difficulty * drift + input_noise + N_consecutive_crash_success + 
-    zerocorr(1 + level_difficulty | ID));
-    fit(MixedModel, formula, my_data; contrasts=my_cake);
-  end
-
-issingular(m_varyingSlope_simple1) # NOT overparamterized
-
-```
-
-```{julia}
-
-gof_summary = let
-  nms = [:m_varyingSlope2, :m_varyingSlope_simple1]
-  mods = eval.(nms)
-  lrt = MixedModels.likelihoodratiotest(m_varyingSlope2, m_varyingSlope_simple1)
-  DataFrame(;
-    name = nms, 
-    dof=dof.(mods),
-    deviance=round.(deviance.(mods), digits=0),
-    AIC=round.(aic.(mods),digits=0),
-    AICc=round.(aicc.(mods),digits=0),
-    BIC=round.(bic.(mods),digits=0),
-    χ²=vcat(:., round.(lrt.tests.deviancediff, digits=0)),
-    χ²_dof=vcat(:., round.(lrt.tests.dofdiff, digits=0)),
-    pvalue=vcat(:., round.(lrt.tests.pvalues, digits=3))
-  )
-end
-
-```
-Slope2 is favored by BIC (and AIC).
-
-Keeping only N_consecutive_crash_success:
-```{julia}
-#| label: m_varyingSlope_simple2
-
-m_varyingSlope_simple2 = let
-    formula = @formula(N_distant_fixations/N_fixations ~ 1 + level_difficulty * drift + input_noise + N_consecutive_crash_success + 
-    zerocorr(1 + N_consecutive_crash_success | ID));
-    fit(MixedModel, formula, my_data; contrasts=my_cake);
-  end
-
-issingular(m_varyingSlope_simple2) # NOT overparamterized
-
-```
-
-```{julia}
-
-gof_summary = let
-  nms = [:m_varyingSlope2, :m_varyingSlope_simple2]
-  mods = eval.(nms)
-  lrt = MixedModels.likelihoodratiotest(m_varyingSlope2, m_varyingSlope_simple2)
-  DataFrame(;
-    name = nms, 
-    dof=dof.(mods),
-    deviance=round.(deviance.(mods), digits=0),
-    AIC=round.(aic.(mods),digits=0),
-    AICc=round.(aicc.(mods),digits=0),
-    BIC=round.(bic.(mods),digits=0),
-    χ²=vcat(:., round.(lrt.tests.deviancediff, digits=0)),
-    χ²_dof=vcat(:., round.(lrt.tests.dofdiff, digits=0)),
-    pvalue=vcat(:., round.(lrt.tests.pvalues, digits=3))
-  )
-end
-
-```
-Referring to BIC, the model with only N_consecutive_crash_success as random slope is favored (not when referring to AIC though).
-
-Now only keeping drift as random slope
-```{julia}
-#| label: m_varyingSlope_simple3
-
-m_varyingSlope_simple3 = let
-    formula = @formula(N_distant_fixations/N_fixations ~ 1 + level_difficulty * drift + input_noise + N_consecutive_crash_success + 
-    zerocorr(1 + drift | ID));
-    fit(MixedModel, formula, my_data; contrasts=my_cake);
-  end
-
-issingular(m_varyingSlope_simple3) # NOT overparamterized
-
-```
-
-But we cannot throw the model against _simple2 because the resulting Chisq would be =0. We will therefore test it against Slope2.
-```{julia}
-
-gof_summary = let
-  nms = [:m_varyingSlope2, :m_varyingSlope_simple3]
-  mods = eval.(nms)
-  lrt = MixedModels.likelihoodratiotest(m_varyingSlope2, m_varyingSlope_simple3)
-  DataFrame(;
-    name = nms, 
-    dof=dof.(mods),
-    deviance=round.(deviance.(mods), digits=0),
-    AIC=round.(aic.(mods),digits=0),
-    AICc=round.(aicc.(mods),digits=0),
-    BIC=round.(bic.(mods),digits=0),
-    χ²=vcat(:., round.(lrt.tests.deviancediff, digits=0)),
-    χ²_dof=vcat(:., round.(lrt.tests.dofdiff, digits=0)),
-    pvalue=vcat(:., round.(lrt.tests.pvalues, digits=3))
-  )
-end
-
-```
-And we see that Slope2 wins. But it lost against _simple2. We can therefore infer that _simple2 is the superior model.
-
-Testing against m_varyingInt1:
-```{julia}
-
-gof_summary = let
-  nms = [:m_varyingInt1, :m_varyingSlope_simple2]
-  mods = eval.(nms)
-  lrt = MixedModels.likelihoodratiotest(m_varyingInt1, m_varyingSlope_simple2)
-  DataFrame(;
-    name = nms, 
-    dof=dof.(mods),
-    deviance=round.(deviance.(mods), digits=0),
-    AIC=round.(aic.(mods),digits=0),
-    AICc=round.(aicc.(mods),digits=0),
-    BIC=round.(bic.(mods),digits=0),
-    χ²=vcat(:., round.(lrt.tests.deviancediff, digits=0)),
-    χ²_dof=vcat(:., round.(lrt.tests.dofdiff, digits=0)),
-    pvalue=vcat(:., round.(lrt.tests.pvalues, digits=3))
-  )
-end
-
-```
-_simple2 is favored by BIC (and AIC). We found our model that best describes the data.
+Input noise is also crucial as random slope. We will select the complex model as our final model.
 
 ## Model selection
-Sticking to m_varyingSlope_simple2. 
+Sticking to m_varyingSlope_complex_zc. 
 ```{julia}
-
-m_varyingSlope_simple2 = let
-    formula = @formula(N_distant_fixations/N_fixations ~ 1 + level_difficulty * drift + input_noise + N_consecutive_crash_success + 
-    zerocorr(1 + N_consecutive_crash_success | ID));
-    fit(MixedModel, formula, my_data; contrasts=my_cake);
-  end
-
-issingular(m_varyingSlope_simple2) # NOT overparamterized
-
-m_varyingSlope_simple2
-```
-1 main effect is significant: level_difficulty: hard & drift -interaction
-
-## Bootstrapping
-```{julia}
-samples = parametricbootstrap(RNG, N_iterations, m_varyingSlope_simple2)
-tbl = samples.tbl
-```
-
-```{julia}
-confint(samples)
-```
-
-Visualizing 95% CIs individually for every covariate.
-```{julia}
-ridgeplot(samples; show_intercept=false, xlabel="Bootstrap density and 95%CI")
-```
-Results:
-- **level_difficulty: hard & drift** -interaction is significant (-0.130991, -0.00859757). This tells us that the main effects of **level_difficulty: hard** and **drift** are interacting negatively with each other. But these aren't significant...
-
-
-# Predicting N_saccades
-
-```{julia}
-#| label: m_varyingInt1
-
-m_varyingInt1 = let
-    formula = @formula(N_saccades ~ 1 + level_difficulty * drift + input_noise + N_consecutive_crash_success + (1 | ID));
-    fit(MixedModel, formula, my_data; contrasts=my_cake);
-  end
-
-issingular(m_varyingInt1) # Not overparamterized
-VarCorr(m_varyingInt1)
-last(m_varyingInt1.λ)
-
-```
-
-## Exploring random slope effects
-
-```{julia}
-#| label: m_varyingSlope_complex
-
-m_varyingSlope_complex = let
-    formula = @formula(N_saccades ~ 1 + level_difficulty * drift + input_noise + N_consecutive_crash_success + 
-    (1 + level_difficulty * drift + input_noise + N_consecutive_crash_success | ID));
-    fit(MixedModel, formula, my_data; contrasts=my_cake);
-  end
-
-issingular(m_varyingSlope_complex) # overparamterized
-
-```
-We detect singularity. Proceeding by deleting interaction term within random effects structure.
-
-```{julia}
-#| label: m_varyingSlope_complex_ni
-
-m_varyingSlope_complex_ni = let
-    formula = @formula(N_saccades ~ 1 + level_difficulty * drift + input_noise + N_consecutive_crash_success + 
-    (1 + level_difficulty + drift + input_noise + N_consecutive_crash_success | ID));
-    fit(MixedModel, formula, my_data; contrasts=my_cake);
-  end
-
-issingular(m_varyingSlope_complex_ni) # overparamterized
-
-```
-Still overparameterized. Stating zerocorr.
-
-```{julia}
-#| label: m_varyingSlope_complex_zc
 
 m_varyingSlope_complex_zc = let
-    formula = @formula(N_saccades ~ 1 + level_difficulty * drift + input_noise + N_consecutive_crash_success + 
-    zerocorr(1 + level_difficulty + drift + input_noise + N_consecutive_crash_success | ID));
-    fit(MixedModel, formula, my_data; contrasts=my_cake);
+    formula = @formula(distant_fixation ~ 1 + N_visible_obstacles + N_visible_drift_tiles + input_noise 
+    + zerocorr(1 + N_visible_obstacles + N_visible_drift_tiles + input_noise | ID));
+    fit(MixedModel, formula, my_data, dist; contrasts=my_cake);
   end
 
-issingular(m_varyingSlope_complex_zc) # overparamterized
-
-```
-Didn't solve it. Proceeding by deleting individual random slope effects.
-
-Deleted:
-- N_consecutive_crash_success
-- input_noise
-- drift
-- level_difficulty
-
-- level_difficulty + N_consecutive_crash_success
-- ... nothing works
-
-```{julia}
-#| label: m_varyingSlope_
-
-m_varyingSlope_ = let
-    formula = @formula(N_saccades ~ 1 + level_difficulty * drift + input_noise + N_consecutive_crash_success + 
-    zerocorr(1 + ? | ID));
-    fit(MixedModel, formula, my_data; contrasts=my_cake);
-  end
-
-issingular(m_varyingSlope_) # overparamterized
-#VarCorr(m_varyingSlope_)
-#last(m_varyingSlope_.λ)
-
+m_varyingSlope_complex_zc
 ```
 
-## Model selection
-Sticking to m_varyingInt1. 
-```{julia}
+## Results
+We so **no** significant effects. The probability to initate a fixation that is distant (vs. close) to the spaceship is not influenced by any of our covariates.
 
-m_varyingInt1 = let
-    formula = @formula(N_saccades ~ 1 + level_difficulty * drift + input_noise + N_consecutive_crash_success + (1 | ID));
-    fit(MixedModel, formula, my_data; contrasts=my_cake);
-  end
-
-issingular(m_varyingInt1) # Not overparamterized
-m_varyingInt1
-
-```
-No main effect is significant.
-
-## Bootstrapping
-```{julia}
-samples = parametricbootstrap(RNG, N_iterations, m_varyingInt1)
-tbl = samples.tbl
-```
-
-```{julia}
-confint(samples)
-```
-
-Visualizing 95% CIs individually for every covariate.
-```{julia}
-ridgeplot(samples; show_intercept=false, xlabel="Bootstrap density and 95%CI")
-```
-No significant effect found. N_saccades cannot be predicted with the covariates at hand.
+N_visible_obstacles *nearly* reaches significance with p=0.0537, potentially increasing the probability to initate a distant fixation.
 
 
 # Predicting done (True=success vs. False=crash) with level_difficulty, level length, and input_noise
