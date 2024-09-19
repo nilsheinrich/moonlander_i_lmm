@@ -21,19 +21,26 @@ library(MASS)
 
 setwd('/Users/heinrich/Projects/Moonlander_i_LMM/')
 
-close_fixations <- read_feather("data/Experiment1_CloseFixations.arrow")
-distant_fixations <- read_feather("data/Experiment1_DistantFixations.arrow")
+#close_fixations <- read_feather("data/Experiment1_CloseFixations.arrow")
+#distant_fixations <- read_feather("data/Experiment1_DistantFixations.arrow")
+close_fixations <- read_feather("data/Experiment1_CloseFixations_short.arrow")
+distant_fixations <- read_feather("data/Experiment1_DistantFixations_short.arrow")
 
+# fixations must have lasted for a minimum duration to be considered as fixation
 close_fixations <- filter(close_fixations, fixation_duration >= 0.0125)
 distant_fixations <- filter(distant_fixations, fixation_duration >= 0.0125)
-#eliminating fixations that were definitely outside of game boarders
+
+# eliminating fixations that were definitely outside of game boarders
+close_fixations <- filter(close_fixations, distance_to_spaceship < 16.63762484977781)
 distant_fixations <- filter(distant_fixations, distance_to_spaceship < 16.63762484977781)
 
 ```
 
 ```{r box_cox_close_fixDur, include=FALSE}
 
-boxcox(lm(close_fixations$fixation_duration ~ 1))
+Lambda <- boxcox(lm(close_fixations$fixation_duration ~ 1))
+
+Lambda$x[which(Lambda$y == max(Lambda$y))]
 
 ```
 lambda, the estimated value is near to 0, implies log transform.

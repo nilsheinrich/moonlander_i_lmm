@@ -1,0 +1,86 @@
+---
+title: "clustering of fixations"
+author: "Nils Wendel Heinrich"
+date: '2024-09-19'
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r packages, include=FALSE}
+library(tidyverse)
+library(dplyr)
+library(arrow)
+library(QuClu)
+
+set.seed(36)
+
+```
+
+```{r eye_data, include=FALSE}
+
+data_fixations <- read_feather("data/Experiment1_AllFixations.arrow")
+
+```
+We have data from 27 participants. Fixations can be initiated with the spaceship either within foveal or peripheral vision. In literature, the threshold for an object to be in peripheral vision is 5 visual degrees. Meaning that if an object is 5° or further away from the center point of vision, it's in periphery. Can we recover this threshold for fixations that have a distance to a reference point (the spaceship)?
+
+```{r clustering, include=FALSE}
+
+# only have important columns in our data
+ml3fix.clust <- data_fixations[c("distance_to_spaceship",
+                                 "fixation_duration",
+                                 "Dist_to_closest_obstacles",
+                          	     "N_visible_obstacles",
+                                 "N_visible_drift_tiles",
+                          	     "input_noise",
+                          	     "ID",
+                          	     "level",
+                          	     "level_difficulty",
+                                 "distant_fixation")] %>% na.omit()
+
+# distant_fixation is =1, when the spaceship is further away than 5°. =0 otherwise.
+
+cla <- kquantiles(ml3fix.clust[1], k=2, method="VS", B=50) # call cluster analysis
+
+ml3fix.clust$cluster <- as.factor(cla$cl-1)		# add cluster assignment to data
+
+# plotting
+# by newly generated cluster
+ggplot(ml3fix.clust, aes(x = distance_to_spaceship, colour = cluster)) +
+  geom_density()
+
+# looks like the algorithm roughly recovered the 5° threshold
+
+# sanity check
+max(ml3fix.clust[ml3fix.clust$cluster == 0, ]$distance_to_spaceship) # minimum distance of distant fixations
+min(ml3fix.clust[ml3fix.clust$cluster == 1, ]$distance_to_spaceship) # maximum distance of close fixations
+
+ml3fix.clust$disargeement <- as.numeric(ml3fix.clust$cluster) - as.numeric(ml3fix.clust$distant_fixation)
+disargeements <- filter(ml3fix.clust, disargeement != 1)
+
+# writing down data with clusters
+write_feather(ml3fix.clust, "data/Experiment1_AllFixations_short.arrow")
+
+```
+
+# Result
+The cluster algorithm draws the line at ~5.7°, visible by the maximum and minimum values for distance_to_spaceship in the individual clusters.
+This does not completely support the 5° threshold established in literature. There are 4988 disagreements.
+We will still apply the sharp cut at 5° for clustering close and distant fixations.
+
+
+```{r writing down data, include=FALSE}
+
+# subsetting
+distant_fixations <- ml3fix.clust[ml3fix.clust$cluster == 1, ]
+close_fixations <- ml3fix.clust[ml3fix.clust$cluster == 0, ]
+
+# julia arrow data
+write_feather(distant_fixations, "data/Experiment1_DistantFixations_short.arrow")
+write_feather(close_fixations, "data/Experiment1_CloseFixations_short.arrow")
+
+```
+
+

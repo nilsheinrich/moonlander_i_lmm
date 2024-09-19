@@ -256,7 +256,7 @@ No significant effect found. N_fixations cannot be predicted with the covariates
 ```{julia}
 #| label: data
 
-my_data = DataFrame(Arrow.Table("data/Experiment1_AllFixations.arrow"))
+my_data = DataFrame(Arrow.Table("data/Experiment1_AllFixations_short.arrow"))
 #my_data = DataFrame(Arrow.Table("data/Experiment1_FixationsComplete.arrow"))
 
 my_data = dropmissing(my_data, [:N_visible_obstacles, :N_visible_drift_tiles, :distance_to_spaceship])
@@ -301,7 +301,7 @@ my_cake = Dict(
 #| label: m_varyingInt1
 
 m_varyingInt1 = let
-    formula = @formula(distant_fixation ~ 1 + N_visible_obstacles + N_visible_drift_tiles + input_noise 
+    formula = @formula(cluster ~ 1 + N_visible_obstacles + N_visible_drift_tiles + input_noise 
     + (1 | ID));
     fit(MixedModel, formula, my_data, dist; contrasts=my_cake);
   end
@@ -320,7 +320,7 @@ Dumping all possible covariates in the random slope effects structure.
 #| label: m_varyingSlope_complex
 
 m_varyingSlope_complex = let
-    formula = @formula(distant_fixation ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise 
+    formula = @formula(cluster ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise 
     + (1 + N_visible_obstacles * N_visible_drift_tiles + input_noise | ID));
     fit(MixedModel, formula, my_data, dist; contrasts=my_cake);
   end
@@ -337,7 +337,7 @@ Deleting the interaction term from random slopes:
 #| label: m_varyingSlope_complex_ni
 
 m_varyingSlope_complex_ni = let
-    formula = @formula(distant_fixation ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise 
+    formula = @formula(cluster ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise 
     + (1 + N_visible_obstacles + N_visible_drift_tiles + input_noise | ID));
     fit(MixedModel, formula, my_data, dist; contrasts=my_cake);
   end
@@ -374,7 +374,7 @@ Stating zerocorr
 #| label: m_varyingSlope_complex_zc
 
 m_varyingSlope_complex_zc = let
-    formula = @formula(distant_fixation ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise 
+    formula = @formula(cluster ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise 
     + zerocorr(1 + N_visible_obstacles * N_visible_drift_tiles + input_noise | ID));
     fit(MixedModel, formula, my_data, dist; contrasts=my_cake);
   end
@@ -411,7 +411,7 @@ Throwing out N_obstacles
 #| label: m_varyingSlope1
 
 m_varyingSlope1 = let
-    formula = @formula(distant_fixation ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise 
+    formula = @formula(cluster ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise 
     + zerocorr(1 + N_visible_drift_tiles + input_noise | ID));
     fit(MixedModel, formula, my_data, dist; contrasts=my_cake);
   end
@@ -447,7 +447,7 @@ Throwing out N_drift
 #| label: m_varyingSlope2
 
 m_varyingSlope2 = let
-    formula = @formula(distant_fixation ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise 
+    formula = @formula(cluster ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise 
     + zerocorr(1 + N_visible_obstacles + input_noise | ID));
     fit(MixedModel, formula, my_data, dist; contrasts=my_cake);
   end
@@ -483,7 +483,7 @@ Throwing out input_noise.
 #| label: m_varyingSlope3
 
 m_varyingSlope3 = let
-    formula = @formula(distant_fixation ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise 
+    formula = @formula(cluster ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise 
     + zerocorr(1 + N_visible_obstacles * N_visible_drift_tiles | ID));
     fit(MixedModel, formula, my_data, dist; contrasts=my_cake);
   end
@@ -519,7 +519,7 @@ Sticking to m_varyingSlope_complex_zc.
 ```{julia}
 
 m_varyingSlope_complex_zc = let
-    formula = @formula(distant_fixation ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise 
+    formula = @formula(cluster ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise 
     + zerocorr(1 + N_visible_obstacles * N_visible_drift_tiles + input_noise | ID));
     fit(MixedModel, formula, my_data, dist; contrasts=my_cake);
   end
@@ -529,12 +529,8 @@ m_varyingSlope_complex_zc
 
 ## Results
 We see **significant effects** for:
-- N_visible_obstacles (β=0.0343896, σ=0.0113504, p<0.0024)
-- N_visible_drift_tiles (β=0.234152, σ=0.0837892, p=0.0052)
-with both covariates **increasing** the probability to initiate a distant fixation. 
-
-Both covariates are negatively correlated:
-- N_visible_obstacles * N_visible_drift_tiles (β=-0.0736978, σ=0.0145409, p<0.001)
+- N_visible_obstacles (β=-0.0311381, σ=0.0131892, p<0.0182)
+**decreasing** the probability to initiate a close fixation.
 
 
 # Predicting done (True=success vs. False=crash) with level_difficulty, level length, and input_noise
