@@ -556,7 +556,7 @@ m_varyingSlope1 = let
 #    fit(MixedModel, varSlop, my_data; contrasts=my_cake);
 #  end
 
-issingular(m_varyingSlope1)
+m_varyingSlope1
 
 ```
 
