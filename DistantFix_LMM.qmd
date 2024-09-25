@@ -423,6 +423,21 @@ plt = data(tbl) * mapping(
 draw(plt; figure=(;supertitle="Parametric bootstrap β estimates of variance components"))
 ```
 
+Main effects:
+N_visible_obstacles         0.00205116  0.00573548    0.36    0.7206
+N_visible_drift_tiles      -0.0464163   0.0511931    -0.91    0.3646
+input_noise: weak-none      0.0245206   0.0475666     0.52    0.6062
+input_noise: strong-weak   -0.0310228   0.0334725    -0.93    0.3540
+N_visible_obstacles & N_visible_drift_tiles
+                           -0.00495345  0.00651002   -0.76    0.4467
+
+CIs:
+ β2  │ -0.00935934  0.013121
+ β3  │ -0.140438    0.0574239
+ β4  │ -0.0680244   0.118001
+ β5  │ -0.0985599   0.0351239
+ β6  │ -0.0175056   0.00809407
+
 Results:
 **No** significant effects for fixation duration in distant fixation.
 
@@ -733,6 +748,21 @@ draw(plt; figure=(;supertitle="Parametric bootstrap β estimates of variance com
 ```
 95% CI is not intersecting with x=0-line.
 
+Main effects:
+N_visible_obstacles        0.0010325    0.000150783   6.85    <1e-11
+N_visible_drift_tiles     -0.000360232  0.00105711   -0.34    0.7333
+input_noise: weak-none     0.000835372  0.00110242    0.76    0.4486
+input_noise: strong-weak   0.0003715    0.000746848   0.50    0.6189
+N_visible_obstacles & N_visible_drift_tiles
+                           0.000325447  0.000160113   2.03    0.0421
+
+CIs:
+ β2  │ 0.000751843  0.00134864
+ β3  │ -0.00241122  0.00174236
+ β4  │ -0.00135974  0.00294998
+ β5  │ -0.00111619  0.00179191
+ β6  │ 1.99206e-5   0.00064364
+
 We find **no** significance for either level of input noise. We see a significant positive effect for **N_visible_obstacles** (0.000723605, 0.00131556).
 The effect of N_visible_obstacles **positively interacts** with the effect of N_visible_drift_tiles (2.03448e-5, 0.000654607).
 
@@ -948,6 +978,16 @@ draw(plt; figure=(;supertitle="Parametric bootstrap β estimates of variance com
 ridgeplot(samples; show_intercept=false, xlabel="Bootstrap density and 95%CI", title="Distance to closest obstacle (distant fixations)")
 ```
 
+Main effects:
+N_visible_drift_tiles      0.0409825   0.0158082    2.59    0.0095
+input_noise: weak-none    -0.00368921  0.00541514  -0.68    0.4957
+input_noise: strong-weak   0.00762467  0.00559578   1.36    0.1730
+
+CIs:
+ β2  │ 0.0110634    0.0724918
+ β3  │ -0.0148501   0.00625245
+ β4  │ -0.00283643  0.0186923
+
 **N_visible_drift_tiles** significantly increases the distance to the closest obstacle in distant fixations (0.00902129, 0.0711237).
 
 
@@ -957,7 +997,7 @@ Not focusing on the time horizon of action goals but rather how many motor actio
 ```{julia}
 #| label: data
 
-my_data = DataFrame(Arrow.Table("data/Experiment1_DistantFixations_test.arrow"))
+my_data = DataFrame(Arrow.Table("data/old/Experiment1_DistantFixations_test.arrow"))
 my_data = dropmissing(my_data, [:N_visible_obstacles, :N_visible_drift_tiles])
 
 # Filtering fixations with duration less than 25 samples
@@ -1138,6 +1178,18 @@ confint(samples)
 ```{julia}
 ridgeplot(samples; show_intercept=false, xlabel="Bootstrap density and 95%CI", title="Horizontal-only Distance to Spaceship")
 ```
+
+Main effects:
+N_visible_obstacles       -0.00734555  0.00663107  -1.11    0.2680
+N_visible_drift_tiles      0.375248    0.0449476    8.35    <1e-16
+input_noise: weak-none    -0.0274359   0.078391    -0.35    0.7263
+input_noise: strong-weak   0.0278237   0.0616773    0.45    0.6519
+
+CIs:
+ β2  │ -0.0203091  0.00545302
+ β3  │ 0.286167    0.461512
+ β4  │ -0.177647   0.131444
+ β5  │ -0.0952292  0.149647
 
 ### Discussing the results
 We find a single significant effect for the **N_visible_drift_tiles**. Any additional drift section on screen increases the horizontal distance to the spaceship (0.283584, 0.463759).

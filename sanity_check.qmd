@@ -528,6 +528,14 @@ m_varyingSlope_complex_zc
 ```
 
 ## Results
+N_visible_obstacles          -0.0311381   0.0131892  -2.36    0.0182
+N_visible_drift_tiles        -0.0759085   0.0873273  -0.87    0.3847
+input_noise: weak-none       -0.0542373   0.0697857  -0.78    0.4370
+input_noise: strong-weak      0.0060961   0.0850726   0.07    0.9429
+N_visible_obstacles & N_visible_drift_tiles
+                             -0.0358188   0.0187024  -1.92    0.0555
+
+
 We see **significant effects** for:
 - N_visible_obstacles (β=-0.0311381, σ=0.0131892, p<0.0182)
 **decreasing** the probability to initiate a close fixation.
@@ -741,12 +749,12 @@ preds = effects(covariate_levels, m_varyingInt1; invlink=AutoInvLink())
 ```
 **Discussing the results:**
 significant effects for:
-- level_difficulty: hard (-3.63577, p<.00)
+- level_difficulty: hard (-3.63577, p<.001)
 - level_difficulty: medium (-2.17203, p=0.0007)
-- input_noise: strong-weak (-0.83504, p<.00), not for weak-none (-0.207822, p=0.2924)
+- input_noise: strong-weak (-0.83504, p<.001), not for weak-none (-0.207822, p=0.2924)
 - level_difficulty: hard & drift (-2.59284, p=0.0016), not for medium & drift (-1.09482, p=0.1913)
 
-ultimately **no** effect of drift on the predicted variable (-0.278706, p=0.7257)
+ultimately **no** effect of drift on the predicted variable (-0.278706, 0.794442, p=0.7257)
 
 ```{julia}
 using LinearAlgebra

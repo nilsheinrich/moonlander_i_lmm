@@ -379,6 +379,22 @@ plt = data(tbl) * mapping(
   ) * AoG.density()
 draw(plt; figure=(;supertitle="Parametric bootstrap β estimates of variance components"))
 ```
+
+Main effects:
+N_visible_obstacles       0.0019499   0.00470378    0.41    0.6785
+N_visible_drift_tiles     0.11973     0.0360449     3.32    0.0009
+input_noise: weak-none   -0.0100244   0.0273321    -0.37    0.7138
+input_noise: strong-weak -0.0250025   0.0294172    -0.85    0.3954
+N_visible_obstacles & N_visible_drift_tiles
+                         -0.00903693  0.00296999   -3.04    0.0023
+
+CIs:
+ β2  │ -0.00733466  0.0109442
+ β3  │ 0.0501722    0.191281
+ β4  │ -0.0617626   0.0436453
+ β5  │ -0.0810504   0.0330931
+ β6  │ -0.0148108   -0.00300392
+
 Of the fixed effects included in our model, significant effects are:
 **N_visible_drift_tiles** (0.0501722, 0.191281) 
 **N_visible_obstacles*N_visible_drift_tiles** (-0.0148108, -0.00300392);
@@ -657,6 +673,21 @@ plt = data(tbl) * mapping(
 draw(plt; figure=(;supertitle="Parametric bootstrap β estimates of variance components"))
 ```
 
+Main effects:
+N_visible_obstacles       0.0693832  0.00949864   7.30    <1e-12
+N_visible_drift_tiles     0.135557   0.0796178    1.70    0.0886
+input_noise: weak-none   -0.0221746  0.0420192   -0.53    0.5977
+input_noise: strong-weak -0.0856295  0.039136    -2.19    0.0287
+N_visible_obstacles & N_visible_drift_tiles
+                         -0.0143588  0.0127808   -1.12    0.2612
+
+CIs:
+β2  │ 0.050666    0.0880947
+β3  │ -0.0321765  0.280568
+β4  │ -0.101686   0.0638326
+β5  │ -0.162673   -0.00892877
+β6  │ -0.0394411  0.0106993
+
 We detect significant effects for 
 **N_visible_obstacles** (0.050666, 0.0880947) and 
-**input noise: strong** (in comparison to input_noise: weak) also significantly influences (decreases; -0.162673, -0.00892877) fixation location in close fixations.
+**input noise: strong** (in comparison to input_noise: weak) also significantly influences (decreases; -0.162673, -0.00892877) fixation location:distance to spaceship in close fixations.
