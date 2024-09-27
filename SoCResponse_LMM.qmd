@@ -543,7 +543,7 @@ m_varyingSlope1 reached lowest BIC (and AIC). We will therefore proceed with dri
 #| label: m_varyingSlope1
 
 m_varyingSlope1 = let
-    varSlop = @formula(SoC ~ 1 + level_difficulty * drift + input_noise + N_fixations + N_saccades + N_consecutive_crash_success + 
+    varSlop = @formula(SoC ~ 1 + level_difficulty * drift + input_noise + N_fixations + N_consecutive_crash_success + 
     (1 + drift| ID) + 
     (1 | done));
     fit(MixedModel, varSlop, my_data; contrasts=my_cake);

@@ -761,7 +761,7 @@ using LinearAlgebra
 
 coef = fixef(m_varyingInt1)
 
-X = [1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0]
+X = [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
 
 log_odds = dot(coef, X)  # dot product of coefficients and predictor values
 prob = 1 / (1 + exp(-log_odds))  # logistic function to get the probability
