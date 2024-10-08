@@ -47,9 +47,7 @@ CairoMakie.activate!(; type="svg");
 #| label: constants
 const RNG = MersenneTwister(36)
 N_iterations = 10000
-```
 
-```{julia}
 const AoG = AlgebraOfGraphics;
 ```
 
@@ -59,7 +57,7 @@ const AoG = AlgebraOfGraphics;
 my_data = DataFrame(Arrow.Table("data/Experiment1_InputData.arrow"))
 my_data = dropmissing(my_data, [:N_visible_obstacles, :N_visible_drift_tiles])
 
-# We will filter input that lasted less than 2 frames (no duration) and longer than 2.45s (controlling for blind input)
+# We will filter out inputs that lasted less than 2 frames (no duration) and longer than 2.45s (controlling for blind input)
 my_data = my_data[(my_data.input_duration .> 0.033) .& (my_data.input_duration .< 2.45), :]
 
 describe(my_data)
@@ -73,7 +71,6 @@ We will declare **ID** as a grouping variable as well as define the effects codi
 ```{julia}
 my_cake = Dict(
   :ID => Grouping(),
-  :total_control_loss => Grouping(),
   :input_noise => HypothesisCoding(
     [
       -1 +1 0
@@ -88,21 +85,22 @@ my_cake = Dict(
 # Modeling input duration
 We will log transform the predicted variable within the formula defined in the linear models.
 
-Varying intercepts for **ID** and **total_control_loss**:
+Varying intercepts for **ID**:
 ```{julia}
 #| label: m_varyingInt1
 
 m_varyingInt1 = let
-    varInt = @formula(log(input_duration) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + (1 | ID));
+    varInt = @formula(log(input_duration) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise 
+    + (1 | ID));
     fit(MixedModel, varInt, my_data; contrasts=my_cake);
   end
 
-issingular(m_varyingInt1) # NOT overparameterized
+#issingular(m_varyingInt1) # NOT overparameterized
 VarCorr(m_varyingInt1)
-last(m_varyingInt1.λ)
+#last(m_varyingInt1.λ)
 
 ```
-We will keep ID as random effect and now explore random slope effects.
+0.060151 / (0.060151 + 0.442267) = 0.11972301947780534 as ICC for ID. We will keep ID as random effect and now explore random slope effects.
 
 ## most complex model
 Including all fixed effects term in the random effects structure.
@@ -110,13 +108,13 @@ Including all fixed effects term in the random effects structure.
 #| label: m_varyingSlope_complex
 
 m_varyingSlope_complex = let
-    varSlop = @formula(log(input_duration) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + (1 + N_visible_obstacles * N_visible_drift_tiles + input_noise | ID));
+    varSlop = @formula(log(input_duration) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise 
+    + (1 + N_visible_obstacles * N_visible_drift_tiles + input_noise | ID));
     fit(MixedModel, varSlop, my_data; contrasts=my_cake);
   end
 
 issingular(m_varyingSlope_complex)  # NOT overparameterized
-VarCorr(m_varyingSlope_complex) # no zeroes in Variance or Std.Dev.
-last(m_varyingSlope_complex.λ) # no zeroes on diagonal
+
 ```
 
 Leaving interaction term out of random effects
@@ -124,13 +122,13 @@ Leaving interaction term out of random effects
 #| label: m_varyingSlope_complex_ni
 
 m_varyingSlope_complex_ni = let
-    varSlop = @formula(log(input_duration) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + (1 + N_visible_obstacles + N_visible_drift_tiles + input_noise | ID));
+    varSlop = @formula(log(input_duration) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise 
+    + (1 + N_visible_obstacles + N_visible_drift_tiles + input_noise | ID));
     fit(MixedModel, varSlop, my_data; contrasts=my_cake);
   end
 
 issingular(m_varyingSlope_complex_ni)  # NOT overparameterized
-VarCorr(m_varyingSlope_complex_ni) # no zeroes in Variance or Std.Dev.
-last(m_varyingSlope_complex_ni.λ) # no zeroes on diagonal
+
 ```
 
 ```{julia}
@@ -160,13 +158,13 @@ Stating zero correlation within random effects structure
 #| label: m_varyingSlope_complex_zc
 
 m_varyingSlope_complex_zc = let
-    varSlop = @formula(log(input_duration) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + zerocorr(1 + N_visible_obstacles + N_visible_drift_tiles + input_noise | ID));
+    varSlop = @formula(log(input_duration) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise 
+    + zerocorr(1 + N_visible_obstacles + N_visible_drift_tiles + input_noise | ID));
     fit(MixedModel, varSlop, my_data; contrasts=my_cake);
   end
 
 issingular(m_varyingSlope_complex_zc)  # NOT overparameterized
-#VarCorr(m_varyingSlope_complex_zc) # no zeroes in Variance or Std.Dev.
-#last(m_varyingSlope_complex_zc.λ) # no zeroes on diagonal
+
 ```
 
 ```{julia}
@@ -174,7 +172,7 @@ issingular(m_varyingSlope_complex_zc)  # NOT overparameterized
 gof_summary = let
   nms = [:m_varyingSlope_complex_zc, :m_varyingSlope_complex_ni]
   mods = eval.(nms)
-  lrt = MixedModels.likelihoodratiotest(m_varyingSlope_complex_nc, m_varyingSlope_complex_ni)
+  lrt = MixedModels.likelihoodratiotest(m_varyingSlope_complex_zc, m_varyingSlope_complex_ni)
   DataFrame(;
     name = nms, 
     dof=dof.(mods),
@@ -196,13 +194,13 @@ Deleting input noise
 #| label: m_varyingSlope1
 
 m_varyingSlope1 = let
-    varSlop = @formula(log(input_duration) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + zerocorr(1 + N_visible_obstacles + N_visible_drift_tiles | ID));
+    varSlop = @formula(log(input_duration) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise 
+    + zerocorr(1 + N_visible_obstacles + N_visible_drift_tiles | ID));
     fit(MixedModel, varSlop, my_data; contrasts=my_cake);
   end
 
 issingular(m_varyingSlope1)  # NOT overparameterized
-VarCorr(m_varyingSlope1) # no zeroes in Variance or Std.Dev.
-last(m_varyingSlope1.λ) # no zeroes on diagonal
+
 ```
 
 ```{julia}
@@ -210,7 +208,7 @@ last(m_varyingSlope1.λ) # no zeroes on diagonal
 gof_summary = let
   nms = [:m_varyingSlope_complex_zc, :m_varyingSlope1]
   mods = eval.(nms)
-  lrt = MixedModels.likelihoodratiotest(m_varyingSlope_complex_nc, m_varyingSlope1)
+  lrt = MixedModels.likelihoodratiotest(m_varyingSlope_complex_zc, m_varyingSlope1)
   DataFrame(;
     name = nms, 
     dof=dof.(mods),
@@ -227,18 +225,18 @@ end
 ```
 BIC (and AIC) favor keeping input noise as random effect.
 
-Deleting N_visible_obstacles
+Deleting N_visible_obstacles instead
 ```{julia}
 #| label: m_varyingSlope2
 
 m_varyingSlope2 = let
-    varSlop = @formula(log(input_duration) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + zerocorr(1 + N_visible_drift_tiles + input_noise | ID));
+    varSlop = @formula(log(input_duration) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise 
+    + zerocorr(1 + N_visible_drift_tiles + input_noise | ID));
     fit(MixedModel, varSlop, my_data; contrasts=my_cake);
   end
 
 issingular(m_varyingSlope2)  # NOT overparameterized
-#VarCorr(m_varyingSlope2) # no zeroes in Variance or Std.Dev.
-#last(m_varyingSlope2.λ) # no zeroes on diagonal
+
 ```
 
 ```{julia}
@@ -246,7 +244,7 @@ issingular(m_varyingSlope2)  # NOT overparameterized
 gof_summary = let
   nms = [:m_varyingSlope_complex_zc, :m_varyingSlope2]
   mods = eval.(nms)
-  lrt = MixedModels.likelihoodratiotest(m_varyingSlope_complex_nc, m_varyingSlope2)
+  lrt = MixedModels.likelihoodratiotest(m_varyingSlope_complex_zc, m_varyingSlope2)
   DataFrame(;
     name = nms, 
     dof=dof.(mods),
@@ -261,20 +259,20 @@ gof_summary = let
 end
 
 ```
-N_visible_obstacles can be kept.
+N_visible_obstacles should be kept as well. Proceeding with m_varyingSlope_complex_zc.
 
 Deleting N_visible_drift_tiles
 ```{julia}
 #| label: m_varyingSlope3
 
 m_varyingSlope3 = let
-    varSlop = @formula(log(input_duration) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + zerocorr(1 + N_visible_obstacles + input_noise | ID));
+    varSlop = @formula(log(input_duration) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise 
+    + zerocorr(1 + N_visible_obstacles + input_noise | ID));
     fit(MixedModel, varSlop, my_data; contrasts=my_cake);
   end
 
 issingular(m_varyingSlope3)  # NOT overparameterized
-#VarCorr(m_varyingSlope3) # no zeroes in Variance or Std.Dev.
-#last(m_varyingSlope3.λ) # no zeroes on diagonal
+
 ```
 
 ```{julia}
@@ -282,7 +280,7 @@ issingular(m_varyingSlope3)  # NOT overparameterized
 gof_summary = let
   nms = [:m_varyingSlope_complex_zc, :m_varyingSlope3]
   mods = eval.(nms)
-  lrt = MixedModels.likelihoodratiotest(m_varyingSlope_complex_nc, m_varyingSlope3)
+  lrt = MixedModels.likelihoodratiotest(m_varyingSlope_complex_zc, m_varyingSlope3)
   DataFrame(;
     name = nms, 
     dof=dof.(mods),
@@ -300,11 +298,13 @@ end
 BIC and AIC agree on keeping N_visible_drift_tiles as random slope effect.
 
 ## Model selection
+We can finally take a look at the main effects:
 ```{julia}
 #| label: m_varyingSlope_complex_zc
 
 m_varyingSlope_complex_zc = let
-    varSlop = @formula(log(input_duration) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + zerocorr(1 + N_visible_obstacles + N_visible_drift_tiles + input_noise | ID));
+    varSlop = @formula(log(input_duration) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise 
+    + zerocorr(1 + N_visible_obstacles + N_visible_drift_tiles + input_noise | ID));
     fit(MixedModel, varSlop, my_data; contrasts=my_cake);
   end
 
@@ -358,11 +358,29 @@ Visualizing 95% CIs individually for every covariate.
 ```{julia}
 ridgeplot(samples; show_intercept=false, xlabel="Bootstrap density and 95%CI", title="Input duration")
 ```
-We detect significant effects for 
-**N_visible_obstcales** [0.0123142, 0.0231702],
-**N_visible_drift_tiles** [0.362015, 0.44076], 
-and their **interaction** effect [-0.0197683, -0.014023]. 
-The CIs show no evidence for either level of input_noise significantly affecting input duration.
+
+**Main results**
+  Fixed-effects parameters:
+──────────────────────────────────────────────────────────────────────────────────────
+                                                   Coef.  Std. Error       z  Pr(>|z|)
+──────────────────────────────────────────────────────────────────────────────────────
+(Intercept)                                  -1.86558     0.0551709   -33.81    <1e-99
+N_visible_obstacles                           0.0175964   0.00276096    6.37    <1e-09
+N_visible_drift_tiles                         0.401293    0.0196813    20.39    <1e-91
+input_noise: weak-none                        0.00104319  0.0130811     0.08    0.9364
+input_noise: strong-weak                     -0.0182364   0.0157568    -1.16    0.2471
+N_visible_obstacles & N_visible_drift_tiles  -0.0167938   0.00147854  -11.36    <1e-29
+──────────────────────────────────────────────────────────────────────────────────────
+
+95% CI:
+ β1  │ -1.97146    -1.75766
+ β2  │ 0.012423    0.0230782
+ β3  │ 0.362223    0.439877
+ β4  │ -0.0235664  0.0275838
+ β5  │ -0.0487669  0.0124872
+ β6  │ -0.0197519  -0.0140028
+
+Strangely more obstacles on the screen lead to longer input durations. I would have thought otherwise.
 
 # Discussion
 In a post-hoc analysis (eye_movement_analysis/input_data_analysis.ipynb), we find that in 0.8419563459983832  (84.2%) of drift cases, participants countered drift by steering against the applied drift. That is well above chance and might reflect a general strategy to deal with environmental drift. Something that we don't find for input noise.
