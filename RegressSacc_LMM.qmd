@@ -47,9 +47,7 @@ CairoMakie.activate!(; type="svg");
 #| label: constants
 const RNG = MersenneTwister(36)
 N_iterations = 10000
-```
 
-```{julia}
 const AoG = AlgebraOfGraphics;
 ```
 
@@ -116,20 +114,21 @@ We start by building the most complex random effects structure around ID (just d
 #| label: m_varyingSlope_complex
 
 m_varyingSlope_complex = let
-    varSlop = @formula(log(saccade_amplitude) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + (1 + N_visible_obstacles * N_visible_drift_tiles + input_noise | ID));
+    varSlop = @formula(log(saccade_amplitude) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise 
+    + (1 + N_visible_obstacles * N_visible_drift_tiles + input_noise | ID));
     fit(MixedModel, varSlop, my_data; contrasts=my_cake);
   end
 
 issingular(m_varyingSlope_complex)  # NOT overparameterized
 ```
-The interaction effect between the two continuous random effects might be overfitting.
 
 We will build a model without the interaction term and test the models against each other.
 ```{julia}
 #| label: m_varyingSlope_complex_ni
 
 m_varyingSlope_complex_ni = let
-    varSlop = @formula(log(saccade_amplitude) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + (1 + N_visible_obstacles + N_visible_drift_tiles + input_noise | ID));
+    varSlop = @formula(log(saccade_amplitude) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise 
+    + (1 + N_visible_obstacles + N_visible_drift_tiles + input_noise | ID));
     fit(MixedModel, varSlop, my_data; contrasts=my_cake);
   end
 
@@ -165,7 +164,8 @@ Not allowing correlation between random effects
 #| label: m_varyingSlope_complex_zc
 
 m_varyingSlope_complex_zc = let
-    varSlop = @formula(log(saccade_amplitude) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + zerocorr(1 + N_visible_obstacles + N_visible_drift_tiles + input_noise | ID));
+    varSlop = @formula(log(saccade_amplitude) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise 
+    + zerocorr(1 + N_visible_obstacles + N_visible_drift_tiles + input_noise | ID));
     fit(MixedModel, varSlop, my_data; contrasts=my_cake);
   end
 
@@ -199,7 +199,8 @@ Leaving out input noise
 #| label: m_varyingSlope1
 
 m_varyingSlope1 = let
-    varSlop = @formula(log(saccade_amplitude) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + zerocorr(1 + N_visible_obstacles + N_visible_drift_tiles | ID));
+    varSlop = @formula(log(saccade_amplitude) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise 
+    + zerocorr(1 + N_visible_obstacles + N_visible_drift_tiles | ID));
     fit(MixedModel, varSlop, my_data; contrasts=my_cake);
   end
 
@@ -233,7 +234,8 @@ Leaving out N_visible_obstacles instead.
 #| label: m_varyingSlope2
 
 m_varyingSlope2 = let
-    varSlop = @formula(log(saccade_amplitude) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + zerocorr(1 + N_visible_drift_tiles + input_noise | ID));
+    varSlop = @formula(log(saccade_amplitude) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise 
+    + zerocorr(1 + N_visible_drift_tiles + input_noise | ID));
     fit(MixedModel, varSlop, my_data; contrasts=my_cake);
   end
 
@@ -267,7 +269,8 @@ Finally, leaving out N_visible_drift_tiles
 #| label: m_varyingSlope3
 
 m_varyingSlope3 = let
-    varSlop = @formula(log(saccade_amplitude) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise + zerocorr(1 + N_visible_obstacles + input_noise | ID));
+    varSlop = @formula(log(saccade_amplitude) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise 
+    + zerocorr(1 + N_visible_obstacles + input_noise | ID));
     fit(MixedModel, varSlop, my_data; contrasts=my_cake);
   end
 
@@ -295,6 +298,20 @@ end
 
 ```
 Close but referring to BIC, we will keep this random slope effect also. We will do hypothesis testing on m_varyingSlope_complex_zc, because it seems to be the model that describes the data best.
+
+## Model selection
+
+```{julia}
+#| label: m_varyingSlope_complex_zc
+
+m_varyingSlope_complex_zc = let
+    varSlop = @formula(log(saccade_amplitude) ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise 
+    + zerocorr(1 + N_visible_obstacles + N_visible_drift_tiles + input_noise | ID));
+    fit(MixedModel, varSlop, my_data; contrasts=my_cake);
+  end
+
+m_varyingSlope_complex_zc
+```
 
 ## Caterpillar plot
 
@@ -355,7 +372,18 @@ draw(plt; figure=(;supertitle="Parametric bootstrap β estimates of variance com
 ```
 95% CI does not cross the x=0 (confint). => Significance
 
-We see significance only for the **N_visible_obstacles** (-0.0757759, -0.0372465) and the interaction effect **N_visible_obstacles*N_visible_drift_tiles** (0.000741297, 0.0313547) meaning these covariates significantly influence saccade amplitude in regressive saccades.
+  Fixed-effects parameters:
+────────────────────────────────────────────────────────────────────────────────
+                                           Coef.  Std. Error      z  Pr(>|z|)
+────────────────────────────────────────────────────────────────────────────────
+(Intercept)                            0.177437     0.0804035    2.21    0.0273
+N_visible_obstacles                   -0.0566637    0.00975116  -5.81    <1e-08
+N_visible_drift_tiles                  0.0116296    0.0603481    0.19    0.8472
+input_noise: weak-none                -0.0436339    0.0551966   -0.79    0.4292
+input_noise: strong-weak              -0.000215033  0.0579392   -0.00    0.9970
+N_visible_obstacles & N_visible_drift_tiles   
+                                       0.0161332    0.00788898   2.05    0.0409
+────────────────────────────────────────────────────────────────────────────────
 
 # Exploratory analysis: Modeling saccade landing site distance to spaceship
 
@@ -587,8 +615,13 @@ m_varyingSlope_complex_zc prevailed. Now we can take a look at the fixed effects
 ```{julia}
 #| label: investigate m_varyingSlope_complex_nc
 
-VarCorr(m_varyingSlope_complex_zc)  # no zeroes in Variance or Std.Dev.
-last(m_varyingSlope_complex_zc.λ)  # no zeroes on diagonal
+m_varyingSlope_complex_zc = let
+    varSlop = @formula(saccLandSite_dist_to_spaceship ~ 1 + N_visible_obstacles * N_visible_drift_tiles + input_noise 
+    + zerocorr(1 + N_visible_obstacles + N_visible_drift_tiles + input_noise | ID));
+    fit(MixedModel, varSlop, my_data; contrasts=my_cake);
+  end
+
+m_varyingSlope_complex_zc
 
 ```
 
@@ -652,4 +685,23 @@ plt = data(tbl) * mapping(
 draw(plt; figure=(;supertitle="Parametric bootstrap β estimates of variance components"))
 ```
 
-Finally we can say that we find significant effects for **N_visible_obstacles** and **N_visible_drift_tiles** individually but **not** for their interaction term. We find no significant effects for either level of input noise.
+  Fixed-effects parameters:
+────────────────────────────────────────────────────────────────────────────────
+                                         Coef.      Std. Error    z    Pr(>|z|)
+────────────────────────────────────────────────────────────────────────────────
+(Intercept)                             16.9084      1.09129    15.49    <1e-53
+N_visible_obstacles                     -0.428286    0.0900455  -4.76    <1e-05
+N_visible_drift_tiles                   -2.404       0.900807   -2.67    0.0076
+input_noise: weak-none                   0.106195    2.15442     0.05    0.9607
+input_noise: strong-weak                 0.433882    1.57754     0.28    0.7833
+N_visible_obstacles & N_visible_drift_tiles  
+                                        -0.0499262   0.0768327  -0.65    0.5158
+────────────────────────────────────────────────────────────────────────────────
+
+95% CIs:
+β1  │ 14.8554    19.0678
+β2  │ -0.606689  -0.256518
+β3  │ -4.15475   -0.645138
+β4  │ -4.08684   4.33581
+β5  │ -2.78923   3.48346
+β6  │ -0.204915  0.097568
