@@ -748,11 +748,19 @@ covariate_levels = Dict(
 preds = effects(covariate_levels, m_varyingInt1; invlink=AutoInvLink())
 ```
 **Discussing the results:**
-significant effects for:
-- level_difficulty: hard (-3.63577, p<.001)
-- level_difficulty: medium (-2.17203, p=0.0007)
-- input_noise: strong-weak (-0.83504, p<.001), not for weak-none (-0.207822, p=0.2924)
-- level_difficulty: hard & drift (-2.59284, p=0.0016), not for medium & drift (-1.09482, p=0.1913)
+Fixed-effects parameters:
+────────────────────────────────────────────────────────────────────────
+                                      Coef.  Std. Error      z  Pr(>|z|)
+────────────────────────────────────────────────────────────────────────
+(Intercept)                        4.29362     0.614184   6.99    <1e-11
+level_difficulty: hard            -3.63577     0.616109  -5.90    <1e-08
+level_difficulty: medium          -2.17203     0.640229  -3.39    0.0007
+drift                             -0.278706    0.794442  -0.35    0.7257
+input_noise: weak-none            -0.207822    0.197401  -1.05    0.2924
+input_noise: strong-weak          -0.83504     0.189021  -4.42    <1e-05
+level_difficulty: hard & drift    -2.59284     0.823683  -3.15    0.0016
+level_difficulty: medium & drift  -1.09482     0.837836  -1.31    0.1913
+────────────────────────────────────────────────────────────────────────
 
 ultimately **no** effect of drift on the predicted variable (-0.278706, 0.794442, p=0.7257)
 
