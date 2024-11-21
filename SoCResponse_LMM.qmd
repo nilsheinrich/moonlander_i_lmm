@@ -424,15 +424,38 @@ draw(plt; figure=(;supertitle="Parametric bootstrap β estimates of variance com
 Looks good!
 
 **Discussing the results:** We find significant effects for (stating 95% CIs):
-- done (1.1896, 1.82211)
-- level_difficulty: hard (-0.597581, -0.220188), not medium though
-- drift (-0.495813, -0.0276936)
-- input_noise: strong vs. weak (-0.470881, -0.237453), not weak vs. none though
-- N_fixations (8.38616e-6, 0.00145474), not for N_saccades though
-- N_consecutive_crash_success (0.0187794, 0.0454039)
-- ld: hard * drift (-0.970736, -0.46804)
-- ld: medium * drift (-0.536937, -0.0194473)
+
 ### Frome these findings, we will only report done and will further include this covariate as random effect.
+  Fixed-effects parameters:
+────────────────────────────────────────────────────────────────────────────
+                                         Coef.   Std. Error      z  Pr(>|z|)
+────────────────────────────────────────────────────────────────────────────
+(Intercept)                        5.01242      0.190501     26.31    <1e-99
+done                               1.51589      0.162333      9.34    <1e-20
+level_difficulty: hard            -0.412023     0.0952308    -4.33    <1e-04
+level_difficulty: medium          -0.177021     0.0968224    -1.83    0.0675
+drift                             -0.267304     0.12103      -2.21    0.0272
+input_noise: weak-none             0.0208473    0.0598687     0.35    0.7277
+input_noise: strong-weak          -0.354532     0.0586715    -6.04    <1e-08
+N_fixations                        0.00075224   0.000374892   2.01    0.0448
+N_saccades                        -0.000378061  0.000406639  -0.93    0.3525
+N_consecutive_crash_success        0.0320665    0.00677747    4.73    <1e-05
+level_difficulty: hard & drift    -0.724499     0.128707     -5.63    <1e-07
+level_difficulty: medium & drift  -0.275714     0.133799     -2.06    0.0393
+────────────────────────────────────────────────────────────────────────────
+
+95%-CIs
+ β02 │ 1.1896       1.82211
+ β03 │ -0.597581    -0.220188
+ β04 │ -0.371119    0.00214051
+ β05 │ -0.495813    -0.0276936
+ β06 │ -0.097458    0.142444
+ β07 │ -0.470881    -0.237453
+ β08 │ 8.38616e-6   0.00145474
+ β09 │ -0.00114561  0.000442978
+ β10 │ 0.0187794    0.0454039
+ β11 │ -0.970736    -0.46804
+ β12 │ -0.536937    -0.0194473
 
 # Including DONE as random effect because we are not interested in variance caused by success
 random effects coding
@@ -576,17 +599,29 @@ ridgeplot(samples; show_intercept=false, xlabel="Bootstrap density and 95%CI", t
 
 **Discussing the results:** We find significant effects for (stating 95% CIs):
 
-### with N_fixations & N_saccades **PAPER**:
-- level_difficulty: hard (-0.642159, -0.23268), not medium though
-- drift did **not** ultimately reach significance (-0.535484, 0.0266281).
-- input_noise: strong vs. weak (-0.459791, -0.21568), not weak vs. none though
-- N_fixations (0.00043501, 0.00196481)
-- N_consecutive_crash_success (0.0123833, 0.0409701)
-- ld: hard * drift (-0.971484, -0.42742), no significance for ld: medium * drift
+  Fixed-effects parameters:
+                                        Coef.   Std. Error      z  Pr(>|z|)
+───────────────────────────────────────────────────────────────────────────
+(Intercept)                        5.73369     0.551073     10.40    <1e-24
+level_difficulty: hard            -0.440597    0.102503     -4.30    <1e-04
+level_difficulty: medium          -0.173716    0.10444      -1.66    0.0963
+drift                             -0.268269    0.143129     -1.87    0.0609
+input_noise: weak-none             0.0483314   0.0643281     0.75    0.4525
+input_noise: strong-weak          -0.338306    0.0628781    -5.38    <1e-07
+N_fixations                        0.00116096  0.000360966   3.22    0.0013
+N_consecutive_crash_success        0.0261546   0.00717917    3.64    0.0003
+level_difficulty: hard & drift    -0.677035    0.137574     -4.92    <1e-06
+level_difficulty: medium & drift  -0.266757    0.144174     -1.85    0.0643
+───────────────────────────────────────────────────────────────────────────
 
-### without N_fixations & N_saccades:
-- level_difficulty: hard (-0.639921, -0.225046), not medium though
-- drift did **not** ultimately reach significance (-0.367976, 0.0402688).
-- input_noise: strong vs. weak (-0.463515, -0.217886), not weak vs. none though (-0.0809001, 0.168251)
-- N_consecutive_crash_success (0.013414, 0.0411281)
-- ld: hard * drift (-0.97185, -0.425968), no significance for ld: medium * drift (-0.53702, 0.0249987)
+95%-CI
+ β01 │ 4.6388      6.77549
+ β02 │ -0.636202   -0.238502
+ β03 │ -0.379857   0.028632
+ β04 │ -0.543672   0.00669217
+ β05 │ -0.0842805  0.169529
+ β06 │ -0.458732   -0.212101
+ β07 │ 0.0004582   0.00186568
+ β08 │ 0.0122002   0.0404017
+ β09 │ -0.946515   -0.408843
+ β10 │ -0.550041   0.0158575
