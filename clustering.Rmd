@@ -68,7 +68,7 @@ write_feather(ml3fix.clust, "data/Experiment1_AllFixations_short.arrow")
 # Result
 The cluster algorithm draws the line at ~5.7°, visible by the maximum and minimum values for distance_to_spaceship in the individual clusters.
 This does not completely support the 5° threshold established in literature. There are 4988 disagreements.
-We will still apply the sharp cut at 5° for clustering close and distant fixations.
+We will still apply the clustered groupings to differentiate between close and distant fixations.
 
 
 ```{r writing down data, include=FALSE}
