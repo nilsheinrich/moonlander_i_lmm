@@ -571,10 +571,10 @@ my_cake = Dict(
   :input_noise => HypothesisCoding(
     [
       -1 +1 0
-      0 -1 +1
+      -1 0 +1
     ];
     levels=["N", "W", "S"],
-    labels=["weak-none", "strong-weak"],
+    labels=["weak-none", "strong-none"],
   ),
   :level_difficutly => HypothesisCoding(
     [
@@ -735,22 +735,6 @@ There is no residual variance estimated: this is because the Bernoulli distribut
 m_varyingInt1
 ```
 
-```{julia}
-using Effects
-
-# first filter data that cannot be predicted by model (missing cases)
-filter!(!ismissing, [my_data.level_difficulty, my_data.drift, my_data.input_noise])
-
-# specify levels of covariates for which we want predictions
-covariate_levels = Dict(
-  :level_difficulty => ["easy", "medium", "hard"], 
-  :drift => ["false", "true"], 
-  :input_noise => ["N", "W", "S"]
-)
-
-# generate predictions
-preds = effects(covariate_levels, m_varyingInt1; invlink=AutoInvLink())
-```
 **Discussing the results:**
 Fixed-effects parameters:
 ────────────────────────────────────────────────────────────────────────
@@ -773,7 +757,16 @@ using LinearAlgebra
 
 coef = fixef(m_varyingInt1)
 
-X = [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
+X = [
+     1.0, # intercept
+     0.0, # level_difficulty: hard
+     1.0, # level_difficulty: medium
+     1.0, # drift 
+     0.0, # input_noise: weak-none 
+     1.0, # input_noise: strong-none 
+     0.0, # level_difficulty: hard & drift
+     1.0  # level_difficulty: medium & drift
+     ]
 
 log_odds = dot(coef, X)  # dot product of coefficients and predictor values
 prob = 1 / (1 + exp(-log_odds))  # logistic function to get the probability
